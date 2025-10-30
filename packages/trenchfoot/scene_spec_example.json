@@ -1,0 +1,74 @@
+{
+  "path_xy": [
+    [
+      0.0,
+      0.0
+    ],
+    [
+      6.0,
+      0.0
+    ],
+    [
+      6.0,
+      4.0
+    ]
+  ],
+  "width": 1.2,
+  "depth": 1.8,
+  "wall_slope": 0.15,
+  "ground_margin": 1.0,
+  "ground": {
+    "z0": 0.0,
+    "slope": [
+      0.0,
+      0.0
+    ],
+    "size_margin": 4.0
+  },
+  "pipes": [
+    {
+      "radius": 0.15,
+      "length": 8.0,
+      "angle_deg": 0,
+      "s_center": 0.35,
+      "z": -1.0,
+      "offset_u": 0.0
+    },
+    {
+      "radius": 0.1,
+      "length": 5.0,
+      "angle_deg": 90,
+      "s_center": 0.75,
+      "z": -0.9,
+      "offset_u": 0.2
+    }
+  ],
+  "boxes": [
+    {
+      "along": 0.8,
+      "across": 0.5,
+      "height": 0.4,
+      "s": 0.55,
+      "offset_u": 0.0
+    }
+  ],
+  "spheres": [
+    {
+      "radius": 0.25,
+      "s": 0.85,
+      "offset_u": -0.2
+    }
+  ],
+  "noise": {
+    "enable": true,
+    "amplitude": 0.01,
+    "corr_length": 0.5,
+    "octaves": 2,
+    "gain": 0.5,
+    "seed": 7,
+    "apply_to": [
+      "trench_walls",
+      "trench_bottom"
+    ]
+  }
+}

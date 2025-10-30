@@ -1,0 +1,39 @@
+{
+  "path_xy": [
+    [
+      0,
+      0
+    ],
+    [
+      6,
+      0
+    ]
+  ],
+  "width": 1.2,
+  "depth": 1.5,
+  "wall_slope": 0.2,
+  "ground_margin": 0.5,
+  "ground": {
+    "z0": 0.0,
+    "slope": [
+      0.0,
+      0.0
+    ],
+    "size_margin": 3.0
+  },
+  "pipes": [
+    {
+      "radius": 0.15,
+      "length": 7.0,
+      "angle_deg": 0,
+      "s_center": 0.5,
+      "z": -0.7,
+      "offset_u": 0.0
+    }
+  ],
+  "boxes": [],
+  "spheres": [],
+  "noise": {
+    "enable": false
+  }
+}

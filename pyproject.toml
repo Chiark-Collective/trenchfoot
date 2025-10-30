@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "trenchfoot"
+version = "0.1.0"
+description = "Synthetic trench scenario generator bundle (surfaces + volumetrics)."
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "Liam Moore" }]
+dependencies = [
+  "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+preview = ["matplotlib>=3.8"]
+mesher = ["gmsh>=4.11"]
+viz = ["plotly>=5.24"]
+dev = ["pytest>=8.3"]
+
+[project.scripts]
+trenchfoot-generate = "trenchfoot.generate_scenarios:main"
+trenchfoot-plot = "trenchfoot.plot_mesh:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["packages/trenchfoot"]
+
+[tool.hatch.metadata]
+allow-direct-references = true

@@ -1,0 +1,38 @@
+{
+  "surface_area_by_group": {
+    "trench_bottom": 3.5999999999999996,
+    "trench_cap_for_volume": 7.199999999999999,
+    "trench_walls": 21.056470248934023,
+    "ground_surface": 86.4,
+    "pipe0_pipe_side": 6.596167093530132,
+    "pipe0_pipe_cap_neg": 0.07063537949702267,
+    "pipe0_pipe_cap_pos": 0.07063537949702267
+  },
+  "closed_surface_sets": {
+    "trench_closed_groups": [
+      "trench_walls",
+      "trench_bottom",
+      "trench_cap_for_volume"
+    ]
+  },
+  "volumes": {
+    "trench_from_surface": -4.5,
+    "trench_flux_integral_div1": -4.5
+  },
+  "footprint_area_top": 7.199999999999999,
+  "footprint_area_bottom": 3.5999999999999996,
+  "width_top": 1.2,
+  "width_bottom": 0.5999999999999999,
+  "noise": {
+    "enable": false,
+    "amplitude": 0.02,
+    "corr_length": 0.5,
+    "octaves": 2,
+    "gain": 0.5,
+    "seed": 42,
+    "apply_to": [
+      "trench_walls",
+      "trench_bottom"
+    ]
+  }
+}
