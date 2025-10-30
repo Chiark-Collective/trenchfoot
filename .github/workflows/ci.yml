@@ -41,6 +41,7 @@ jobs:
     env:
       UV_PROJECT_ENVIRONMENT: .venv
       PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+      PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -54,6 +55,16 @@ jobs:
 
       - name: Create virtual environment
         run: uv venv --python 3.12
+
+      - name: Ensure PyPI token
+        shell: bash
+        run: |
+          TOKEN="${PYPI_API_TOKEN:-${PYPI_TOKEN:-}}"
+          if [ -z "$TOKEN" ]; then
+            echo "PYPI_API_TOKEN or PYPI_TOKEN secret not provided" >&2
+            exit 1
+          fi
+          echo "PYPI_API_TOKEN=$TOKEN" >> "$GITHUB_ENV"
 
       - name: Load .env if present
         if: hashFiles('.env') != ''
