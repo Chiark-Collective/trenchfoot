@@ -442,10 +442,15 @@ def generate_trench_volume(
         for dim, tag in gmsh.model.getPhysicalGroups():
             name = gmsh.model.getPhysicalName(dim, tag) or f"dim{dim}_tag{tag}"
             entities = tuple(gmsh.model.getEntitiesForPhysicalGroup(dim, tag))
-            pg_types, pg_elem_tags = gmsh.model.mesh.getElementsForPhysicalGroup(dim, tag)
+            elem_accum: Dict[int, List[int]] = {}
+            for entity_tag in entities:
+                et_types, et_elem_tags, _ = gmsh.model.mesh.getElements(dim, entity_tag)
+                for etype, tags in zip(et_types, et_elem_tags):
+                    bucket = elem_accum.setdefault(int(etype), [])
+                    bucket.extend(int(t) for t in tags)
             elements_map: Dict[int, np.ndarray] = {
-                int(t): np.array(tags, dtype=int)
-                for t, tags in zip(pg_types, pg_elem_tags)
+                etype: np.array(values, dtype=int)
+                for etype, values in elem_accum.items()
             }
             physical_groups.append(
                 PhysicalGroupInfo(
