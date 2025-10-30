@@ -1,6 +1,7 @@
 import json
 import sys
 from pathlib import Path
+from typing import Optional
 
 import pytest
 
@@ -31,6 +32,38 @@ from trenchfoot.trench_scene_generator_v3 import (
     generate_surface_mesh,
 )
 import trenchfoot as tf
+
+_GMSH_RUNTIME_READY: Optional[bool] = None
+
+
+def _gmsh_runtime_ready() -> bool:
+    global _GMSH_RUNTIME_READY
+    if _GMSH_RUNTIME_READY is not None:
+        return _GMSH_RUNTIME_READY
+    try:
+        import gmsh  # noqa: F401
+    except Exception:
+        _GMSH_RUNTIME_READY = False
+        return False
+    try:
+        gmsh.initialize()
+    except Exception:
+        _GMSH_RUNTIME_READY = False
+    else:
+        _GMSH_RUNTIME_READY = True
+    finally:
+        try:
+            gmsh.finalize()
+        except Exception:
+            pass
+    return _GMSH_RUNTIME_READY
+
+
+def _require_gmsh_runtime():
+    gmsh = pytest.importorskip("gmsh")
+    if not _gmsh_runtime_ready():
+        pytest.skip("gmsh runtime prerequisites (e.g. libGLU) not available in this environment")
+    return gmsh
 
 
 def _minimal_spec_dict() -> dict:
@@ -128,7 +161,7 @@ def test_generate_scenarios_single(tmp_path):
 
 
 def test_volumetric_generation(tmp_path):
-    gmsh = pytest.importorskip("gmsh")
+    gmsh = _require_gmsh_runtime()
 
     spec = _minimal_spec_dict()
     scenario = ScenarioDefinition(name="volume_case", spec=spec)
@@ -172,7 +205,7 @@ def test_volumetric_generation(tmp_path):
 
 
 def test_generate_trench_volume_in_memory(tmp_path):
-    gmsh = pytest.importorskip("gmsh")
+    gmsh = _require_gmsh_runtime()
 
     spec = _minimal_spec_dict()
     result = tf.generate_trench_volume(spec, lc=0.4, persist_path=tmp_path / "volume.msh")
@@ -189,7 +222,7 @@ def test_generate_trench_volume_in_memory(tmp_path):
 
 
 def test_default_scenarios_volumetric(tmp_path):
-    gmsh = pytest.importorskip("gmsh")
+    gmsh = _require_gmsh_runtime()
 
     scenarios = default_scenarios()
     report = generate_scenarios(
