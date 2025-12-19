@@ -14,7 +14,7 @@
     ]
   ],
   "width": 1.2,
-  "depth": 1.8,
+  "depth": 1.1,
   "wall_slope": 0.15,
   "ground_margin": 1.0,
   "ground": {
@@ -23,7 +23,7 @@
       0.0,
       0.0
     ],
-    "size_margin": 4.0
+    "size_margin": 1.2
   },
   "pipes": [
     {
@@ -31,7 +31,7 @@
       "length": 8.0,
       "angle_deg": 0,
       "s_center": 0.35,
-      "z": -1.0,
+      "z": -0.6,
       "offset_u": 0.0
     },
     {
@@ -39,7 +39,7 @@
       "length": 5.0,
       "angle_deg": 90,
       "s_center": 0.75,
-      "z": -0.9,
+      "z": -0.55,
       "offset_u": 0.2
     }
   ],

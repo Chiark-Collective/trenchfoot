@@ -10,7 +10,7 @@
     ]
   ],
   "width": 1.0,
-  "depth": 1.0,
+  "depth": 0.6,
   "wall_slope": 0.0,
   "ground_margin": 0.5,
   "ground": {
@@ -19,7 +19,7 @@
       0.0,
       0.0
     ],
-    "size_margin": 3.0
+    "size_margin": 1.0
   },
   "pipes": [],
   "boxes": [],

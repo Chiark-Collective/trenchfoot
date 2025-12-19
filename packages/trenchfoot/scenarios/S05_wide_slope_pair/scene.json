@@ -14,7 +14,7 @@
     ]
   ],
   "width": 2.4,
-  "depth": 1.2,
+  "depth": 0.7,
   "wall_slope": 0.08,
   "ground_margin": 1.5,
   "ground": {
@@ -23,7 +23,7 @@
       0.02,
       -0.015
     ],
-    "size_margin": 6.0
+    "size_margin": 1.5
   },
   "pipes": [
     {
@@ -31,7 +31,7 @@
       "length": 5.5,
       "angle_deg": 10,
       "s_center": 0.35,
-      "z": -0.7,
+      "z": -0.4,
       "offset_u": 0.3,
       "clearance_scale": 0.9
     },
@@ -40,7 +40,7 @@
       "length": 4.2,
       "angle_deg": -15,
       "s_center": 0.7,
-      "z": -0.8,
+      "z": -0.45,
       "offset_u": -0.4,
       "clearance_scale": 1.1
     }
@@ -49,10 +49,10 @@
     {
       "along": 1.2,
       "across": 0.9,
-      "height": 0.5,
+      "height": 0.35,
       "s": 0.55,
       "offset_u": -0.25,
-      "z": -0.6
+      "z": -0.35
     }
   ],
   "spheres": [],

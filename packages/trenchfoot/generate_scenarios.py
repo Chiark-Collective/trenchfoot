@@ -135,18 +135,29 @@ def gmsh_available() -> bool:
     return _gmsh_mesher is not None
 
 
+def _generate_circular_path(
+    center: tuple[float, float], radius: float, n_vertices: int = 32
+) -> List[List[float]]:
+    """Generate vertices for a circular polyline approximation."""
+    import math
+    cx, cy = center
+    # Create nearly-closed circle (small gap to work with existing polyline logic)
+    angles = [2 * math.pi * i / n_vertices for i in range(n_vertices)]
+    return [[cx + radius * math.cos(a), cy + radius * math.sin(a)] for a in angles]
+
+
 def default_scenarios() -> List[ScenarioDefinition]:
-    """Built-in scenario presets."""
+    """Built-in scenario presets with shallower depths and offset polygon ground."""
     return [
         ScenarioDefinition(
             "S01_straight_vwalls",
             {
                 "path_xy": [[0, 0], [5, 0]],
                 "width": 1.0,
-                "depth": 1.0,
+                "depth": 0.6,
                 "wall_slope": 0.0,
                 "ground_margin": 0.5,
-                "ground": {"z0": 0.0, "slope": [0.0, 0.0], "size_margin": 3.0},
+                "ground": {"z0": 0.0, "slope": [0.0, 0.0], "size_margin": 1.0},
                 "pipes": [],
                 "boxes": [],
                 "spheres": [],
@@ -158,17 +169,17 @@ def default_scenarios() -> List[ScenarioDefinition]:
             {
                 "path_xy": [[0, 0], [6, 0]],
                 "width": 1.2,
-                "depth": 1.5,
+                "depth": 0.9,
                 "wall_slope": 0.2,
                 "ground_margin": 0.5,
-                "ground": {"z0": 0.0, "slope": [0.0, 0.0], "size_margin": 3.0},
+                "ground": {"z0": 0.0, "slope": [0.0, 0.0], "size_margin": 1.0},
                 "pipes": [
                     {
                         "radius": 0.15,
                         "length": 7.0,
                         "angle_deg": 0,
                         "s_center": 0.5,
-                        "z": -0.7,
+                        "z": -0.45,
                         "offset_u": 0.0,
                     }
                 ],
@@ -182,17 +193,17 @@ def default_scenarios() -> List[ScenarioDefinition]:
             {
                 "path_xy": [[0, 0], [6, 0], [6, 4]],
                 "width": 1.2,
-                "depth": 1.8,
+                "depth": 1.1,
                 "wall_slope": 0.15,
                 "ground_margin": 1.0,
-                "ground": {"z0": 0.0, "slope": [0.0, 0.0], "size_margin": 4.0},
+                "ground": {"z0": 0.0, "slope": [0.0, 0.0], "size_margin": 1.2},
                 "pipes": [
                     {
                         "radius": 0.15,
                         "length": 8.0,
                         "angle_deg": 0,
                         "s_center": 0.35,
-                        "z": -1.0,
+                        "z": -0.6,
                         "offset_u": 0.0,
                     },
                     {
@@ -200,7 +211,7 @@ def default_scenarios() -> List[ScenarioDefinition]:
                         "length": 5.0,
                         "angle_deg": 90,
                         "s_center": 0.75,
-                        "z": -0.9,
+                        "z": -0.55,
                         "offset_u": 0.2,
                     },
                 ],
@@ -230,17 +241,17 @@ def default_scenarios() -> List[ScenarioDefinition]:
             {
                 "path_xy": [[0, 0], [6, 0], [6, 4], [0, 4]],
                 "width": 1.4,
-                "depth": 2.0,
+                "depth": 1.2,
                 "wall_slope": 0.25,
                 "ground_margin": 1.2,
-                "ground": {"z0": 0.0, "slope": [0.0, 0.0], "size_margin": 5.0},
+                "ground": {"z0": 0.0, "slope": [0.0, 0.0], "size_margin": 1.5},
                 "pipes": [
                     {
                         "radius": 0.18,
                         "length": 9.0,
                         "angle_deg": 0,
                         "s_center": 0.25,
-                        "z": -1.0,
+                        "z": -0.6,
                         "offset_u": 0.0,
                     },
                     {
@@ -248,7 +259,7 @@ def default_scenarios() -> List[ScenarioDefinition]:
                         "length": 5.0,
                         "angle_deg": 45,
                         "s_center": 0.55,
-                        "z": -1.1,
+                        "z": -0.65,
                         "offset_u": -0.2,
                     },
                     {
@@ -256,12 +267,12 @@ def default_scenarios() -> List[ScenarioDefinition]:
                         "length": 3.5,
                         "angle_deg": -60,
                         "s_center": 0.75,
-                        "z": -1.3,
+                        "z": -0.8,
                         "offset_u": 0.25,
                     },
                 ],
                 "boxes": [],
-                "spheres": [{"radius": 0.3, "s": 0.85, "offset_u": -0.2}],
+                "spheres": [{"radius": 0.25, "s": 0.85, "offset_u": -0.2, "z": -0.7}],
                 "noise": {
                     "enable": True,
                     "amplitude": 0.02,
@@ -278,17 +289,17 @@ def default_scenarios() -> List[ScenarioDefinition]:
             {
                 "path_xy": [[0, 0], [9, 0], [9, 3]],
                 "width": 2.4,
-                "depth": 1.2,
+                "depth": 0.7,
                 "wall_slope": 0.08,
                 "ground_margin": 1.5,
-                "ground": {"z0": 0.0, "slope": [0.02, -0.015], "size_margin": 6.0},
+                "ground": {"z0": 0.0, "slope": [0.02, -0.015], "size_margin": 1.5},
                 "pipes": [
                     {
                         "radius": 0.2,
                         "length": 5.5,
                         "angle_deg": 10,
                         "s_center": 0.35,
-                        "z": -0.7,
+                        "z": -0.4,
                         "offset_u": 0.3,
                         "clearance_scale": 0.9,
                     },
@@ -297,7 +308,7 @@ def default_scenarios() -> List[ScenarioDefinition]:
                         "length": 4.2,
                         "angle_deg": -15,
                         "s_center": 0.7,
-                        "z": -0.8,
+                        "z": -0.45,
                         "offset_u": -0.4,
                         "clearance_scale": 1.1,
                     },
@@ -306,10 +317,10 @@ def default_scenarios() -> List[ScenarioDefinition]:
                     {
                         "along": 1.2,
                         "across": 0.9,
-                        "height": 0.5,
+                        "height": 0.35,
                         "s": 0.55,
                         "offset_u": -0.25,
-                        "z": -0.6,
+                        "z": -0.35,
                     }
                 ],
                 "spheres": [],
@@ -329,17 +340,17 @@ def default_scenarios() -> List[ScenarioDefinition]:
             {
                 "path_xy": [[0, 0], [4, -1], [8, 0], [8, 5], [2, 5], [-1, 2]],
                 "width": 2.6,
-                "depth": 1.4,
+                "depth": 0.85,
                 "wall_slope": 0.12,
                 "ground_margin": 2.0,
-                "ground": {"z0": 0.2, "slope": [0.015, 0.03], "size_margin": 7.0},
+                "ground": {"z0": 0.2, "slope": [0.015, 0.03], "size_margin": 1.8},
                 "pipes": [
                     {
                         "radius": 0.18,
                         "length": 6.0,
                         "angle_deg": 35,
                         "s_center": 0.3,
-                        "z": -0.9,
+                        "z": -0.55,
                         "offset_u": 0.35,
                         "clearance_scale": 1.0,
                     },
@@ -348,14 +359,14 @@ def default_scenarios() -> List[ScenarioDefinition]:
                         "length": 4.8,
                         "angle_deg": -40,
                         "s_center": 0.6,
-                        "z": -0.95,
+                        "z": -0.6,
                         "offset_u": -0.45,
                         "clearance_scale": 0.85,
                     },
                 ],
                 "boxes": [],
                 "spheres": [
-                    {"radius": 0.35, "s": 0.82, "offset_u": 0.3, "z": -0.65}
+                    {"radius": 0.3, "s": 0.82, "offset_u": 0.3, "z": -0.4}
                 ],
                 "noise": {
                     "enable": True,
@@ -365,6 +376,66 @@ def default_scenarios() -> List[ScenarioDefinition]:
                     "gain": 0.55,
                     "seed": 29,
                     "apply_to": ["trench_walls", "trench_bottom", "pipe*_pipe_side"],
+                },
+            },
+        ),
+        ScenarioDefinition(
+            "S07_circular_well",
+            {
+                "path_xy": _generate_circular_path((0.0, 0.0), radius=1.5, n_vertices=32),
+                "width": 2.0,
+                "depth": 2.5,
+                "wall_slope": 0.05,
+                "ground_margin": 1.0,
+                "ground": {"z0": 0.0, "slope": [0.0, 0.0], "size_margin": 2.0},
+                "pipes": [
+                    # Upper pipe - large diameter, horizontal
+                    {
+                        "radius": 0.20,
+                        "length": 4.0,
+                        "angle_deg": 0,
+                        "s_center": 0.25,
+                        "z": -0.5,
+                        "offset_u": 0.0,
+                    },
+                    # Middle pipe - medium, angled
+                    {
+                        "radius": 0.15,
+                        "length": 3.5,
+                        "angle_deg": 45,
+                        "s_center": 0.5,
+                        "z": -1.2,
+                        "offset_u": 0.1,
+                    },
+                    # Lower pipe - small, opposite angle
+                    {
+                        "radius": 0.10,
+                        "length": 3.0,
+                        "angle_deg": -60,
+                        "s_center": 0.75,
+                        "z": -1.8,
+                        "offset_u": -0.15,
+                    },
+                    # Deep pipe - crossing at bottom
+                    {
+                        "radius": 0.12,
+                        "length": 3.2,
+                        "angle_deg": 90,
+                        "s_center": 0.0,
+                        "z": -2.2,
+                        "offset_u": 0.0,
+                    },
+                ],
+                "boxes": [],
+                "spheres": [{"radius": 0.25, "s": 0.4, "offset_u": 0.0, "z": -1.5}],
+                "noise": {
+                    "enable": True,
+                    "amplitude": 0.02,
+                    "corr_length": 0.4,
+                    "octaves": 2,
+                    "gain": 0.5,
+                    "seed": 37,
+                    "apply_to": ["trench_walls", "trench_bottom"],
                 },
             },
         ),

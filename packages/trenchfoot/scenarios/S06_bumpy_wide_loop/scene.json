@@ -26,7 +26,7 @@
     ]
   ],
   "width": 2.6,
-  "depth": 1.4,
+  "depth": 0.85,
   "wall_slope": 0.12,
   "ground_margin": 2.0,
   "ground": {
@@ -35,7 +35,7 @@
       0.015,
       0.03
     ],
-    "size_margin": 7.0
+    "size_margin": 1.8
   },
   "pipes": [
     {
@@ -43,7 +43,7 @@
       "length": 6.0,
       "angle_deg": 35,
       "s_center": 0.3,
-      "z": -0.9,
+      "z": -0.55,
       "offset_u": 0.35,
       "clearance_scale": 1.0
     },
@@ -52,7 +52,7 @@
       "length": 4.8,
       "angle_deg": -40,
       "s_center": 0.6,
-      "z": -0.95,
+      "z": -0.6,
       "offset_u": -0.45,
       "clearance_scale": 0.85
     }
@@ -60,10 +60,10 @@
   "boxes": [],
   "spheres": [
     {
-      "radius": 0.35,
+      "radius": 0.3,
       "s": 0.82,
       "offset_u": 0.3,
-      "z": -0.65
+      "z": -0.4
     }
   ],
   "noise": {

@@ -33,6 +33,9 @@ except Exception:
     plt = None
     Poly3DCollection = None
 
+# Groups kept for internal metrics but excluded from OBJ export and previews
+_INTERNAL_GROUPS = frozenset({"trench_cap_for_volume"})
+
 # ---------------- Geometry helpers ----------------
 
 def _normalize(v: np.ndarray) -> np.ndarray:
@@ -262,9 +265,14 @@ def _compute_surface_metrics(
     return metrics
 
 
-def _render_surface_previews(groups: Dict[str, Tuple[np.ndarray, np.ndarray]]) -> Dict[str, bytes]:
+def _render_surface_previews(
+    groups: Dict[str, Tuple[np.ndarray, np.ndarray]],
+    exclude_groups: Optional[frozenset] = None,
+) -> Dict[str, bytes]:
     if plt is None or not groups:
         return {}
+    if exclude_groups:
+        groups = {k: v for k, v in groups.items() if k not in exclude_groups}
     all_vertices = [V for (V, F) in groups.values() if V.size > 0]
     if not all_vertices:
         return {}
@@ -380,7 +388,9 @@ class SurfaceMeshResult:
         out_path = Path(out_dir)
         out_path.mkdir(parents=True, exist_ok=True)
         obj_path = out_path / "trench_scene.obj"
-        write_obj_with_groups(obj_path.as_posix(), self.groups)
+        # Exclude internal groups (like trench_cap_for_volume) from OBJ export
+        export_groups = {k: v for k, v in self.groups.items() if k not in _INTERNAL_GROUPS}
+        write_obj_with_groups(obj_path.as_posix(), export_groups)
         metrics_path = out_path / "metrics.json"
         with metrics_path.open("w") as fh:
             json.dump(self.metrics, fh, indent=2)
@@ -533,18 +543,104 @@ def make_trench_from_path_sloped(path_xy: List[Tuple[float,float]], width_top: f
     }
     return groups, poly_top, poly_bot, extra
 
+def _triangulate_polygon_with_hole(outer: np.ndarray, hole: np.ndarray) -> np.ndarray:
+    """Triangulate a polygon with a single hole using bridge technique + ear clipping.
+
+    Both outer and hole should be CCW oriented. The hole represents the opening
+    that should be cut out of the outer polygon.
+    """
+    # Find closest pair of vertices between outer and hole
+    min_dist = float("inf")
+    bridge_outer_idx = 0
+    bridge_hole_idx = 0
+    for i, p_outer in enumerate(outer):
+        for j, p_hole in enumerate(hole):
+            d = np.linalg.norm(p_outer - p_hole)
+            if d < min_dist:
+                min_dist = d
+                bridge_outer_idx = i
+                bridge_hole_idx = j
+
+    # Build combined polygon: outer[0..bridge] -> hole[bridge..end, 0..bridge] reversed -> outer[bridge..end]
+    # The hole is traversed in reverse (CW) to create the correct winding
+    n_outer = len(outer)
+    n_hole = len(hole)
+
+    combined = []
+    # First part of outer (up to and including bridge point)
+    for i in range(bridge_outer_idx + 1):
+        combined.append(outer[i])
+    # Hole traversed in reverse starting from bridge point
+    for i in range(n_hole):
+        idx = (bridge_hole_idx - i) % n_hole
+        combined.append(hole[idx])
+    # Back to outer bridge point (creates second bridge edge)
+    combined.append(outer[bridge_outer_idx].copy())
+    # Rest of outer
+    for i in range(bridge_outer_idx + 1, n_outer):
+        combined.append(outer[i])
+
+    combined = np.array(combined, float)
+    # Triangulate the combined polygon
+    return _ear_clipping_triangulation(combined)
+
+
 def make_ground_surface_plane(path_xy: List[Tuple[float,float]], width_top: float, ground) -> Dict[str,Tuple[np.ndarray,np.ndarray]]:
-    # single rectangular plane covering the trench projection + margin
-    half_top = width_top/2.0
-    L, R = _offset_polyline(path_xy, half_top)
-    ring = _ensure_ccw(_ring_from_LR(L, R))
-    minx, miny = ring.min(axis=0); maxx, maxy = ring.max(axis=0)
-    m = float(max(1.0, ground.size_margin))
+    """Create ground surface as an offset polygon around the trench opening.
+
+    Instead of an axis-aligned bounding box, the ground follows the trench
+    outline with a constant margin, creating a more natural shape that hugs
+    L-shaped, U-shaped, and curved trenches.
+    """
+    half_top = width_top / 2.0
+    m = float(max(0.5, ground.size_margin))
     gfun = _ground_fn(ground)
-    corners_xy = np.array([[minx-m,miny-m],[maxx+m,miny-m],[maxx+m,maxy+m],[minx-m,maxy+m]], float)
-    Vg = np.array([[x,y,gfun(x,y)] for (x,y) in corners_xy], float)
-    Fg = np.array([[0,1,2],[0,2,3]], int) if _polygon_area_2d(corners_xy)>0 else np.array([[0,2,1],[0,3,2]], int)
-    return {"ground_surface": (Vg, Fg)}
+
+    # Inner boundary: the trench opening (same as trench top ring)
+    L_inner, R_inner = _offset_polyline(path_xy, half_top)
+    inner_ring = _ensure_ccw(_ring_from_LR(L_inner, R_inner))
+
+    # Outer boundary: offset by additional margin
+    L_outer, R_outer = _offset_polyline(path_xy, half_top + m)
+    outer_ring = _ensure_ccw(_ring_from_LR(L_outer, R_outer))
+
+    # Triangulate the polygon with hole
+    tris = _triangulate_polygon_with_hole(outer_ring, inner_ring)
+
+    # Build vertex array with all unique vertices from combined polygon
+    # The triangulation indices reference the combined polygon vertices
+    n_outer = len(outer_ring)
+    n_hole = len(inner_ring)
+
+    # Find bridge indices (same logic as in triangulation)
+    min_dist = float("inf")
+    bridge_outer_idx = 0
+    bridge_hole_idx = 0
+    for i, p_outer in enumerate(outer_ring):
+        for j, p_hole in enumerate(inner_ring):
+            d = np.linalg.norm(p_outer - p_hole)
+            if d < min_dist:
+                min_dist = d
+                bridge_outer_idx = i
+                bridge_hole_idx = j
+
+    # Build the same combined vertex array as triangulation uses
+    combined_xy = []
+    for i in range(bridge_outer_idx + 1):
+        combined_xy.append(outer_ring[i])
+    for i in range(n_hole):
+        idx = (bridge_hole_idx - i) % n_hole
+        combined_xy.append(inner_ring[idx])
+    combined_xy.append(outer_ring[bridge_outer_idx].copy())
+    for i in range(bridge_outer_idx + 1, n_outer):
+        combined_xy.append(outer_ring[i])
+
+    combined_xy = np.array(combined_xy, float)
+
+    # Apply ground elevation to get 3D vertices
+    Vg = np.array([[x, y, gfun(x, y)] for (x, y) in combined_xy], float)
+
+    return {"ground_surface": (Vg, tris)}
 
 def _half_width_at_depth(half_top: float, slope: float, top_z: float, z: float) -> float:
     return max(1e-6, half_top - slope * (top_z - z))
@@ -731,7 +827,8 @@ def _build_surface_groups(
 def generate_surface_mesh(spec: SceneSpec, *, make_preview: bool = False) -> SurfaceMeshResult:
     groups, object_counts, extra = _build_surface_groups(spec)
     metrics = _compute_surface_metrics(groups, extra, spec)
-    previews = _render_surface_previews(groups) if make_preview else {}
+    # Exclude internal groups (like cap) from previews to show open-topped trenches
+    previews = _render_surface_previews(groups, exclude_groups=_INTERNAL_GROUPS) if make_preview else {}
     return SurfaceMeshResult(
         spec=spec,
         groups=groups,

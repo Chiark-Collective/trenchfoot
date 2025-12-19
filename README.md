@@ -25,29 +25,27 @@ Color key: trench surfaces use warm soil tones; embedded geometry is colour-code
 | S04_U_slope_multi_noise | ![S04 top](packages/trenchfoot/scenarios/S04_U_slope_multi_noise/preview_top.png) | ![S04 side](packages/trenchfoot/scenarios/S04_U_slope_multi_noise/preview_side.png) | ![S04 oblique](packages/trenchfoot/scenarios/S04_U_slope_multi_noise/preview_oblique.png) |
 | S05_wide_slope_pair | ![S05 top](packages/trenchfoot/scenarios/S05_wide_slope_pair/preview_top.png) | ![S05 side](packages/trenchfoot/scenarios/S05_wide_slope_pair/preview_side.png) | ![S05 oblique](packages/trenchfoot/scenarios/S05_wide_slope_pair/preview_oblique.png) |
 | S06_bumpy_wide_loop | ![S06 top](packages/trenchfoot/scenarios/S06_bumpy_wide_loop/preview_top.png) | ![S06 side](packages/trenchfoot/scenarios/S06_bumpy_wide_loop/preview_side.png) | ![S06 oblique](packages/trenchfoot/scenarios/S06_bumpy_wide_loop/preview_oblique.png) |
+| S07_circular_well | ![S07 top](packages/trenchfoot/scenarios/S07_circular_well/preview_top.png) | ![S07 side](packages/trenchfoot/scenarios/S07_circular_well/preview_side.png) | ![S07 oblique](packages/trenchfoot/scenarios/S07_circular_well/preview_oblique.png) |
 
-### S06 preset at a glance
+### S07 circular well preset
+
+A deep cylindrical well with criss-crossing pipes at different elevations:
 
 ```json
 {
-  "path_xy": [[0, 0], [4, -1], [8, 0], [8, 5], [2, 5], [-1, 2]],
-  "width": 2.6,
-  "depth": 1.4,
-  "wall_slope": 0.12,
-  "ground": {"z0": 0.2, "slope": [0.015, 0.03], "size_margin": 7.0},
+  "path_xy": "<<32-vertex circle approximation, radius=1.5>>",
+  "width": 2.0,
+  "depth": 2.5,
+  "wall_slope": 0.05,
+  "ground": {"z0": 0.0, "slope": [0.0, 0.0], "size_margin": 2.0},
   "pipes": [
-    {"radius": 0.18, "length": 6.0, "angle_deg": 35, "s_center": 0.3, "z": -0.9, "offset_u": 0.35},
-    {"radius": 0.14, "length": 4.8, "angle_deg": -40, "s_center": 0.6, "z": -0.95, "offset_u": -0.45}
+    {"radius": 0.20, "length": 4.0, "angle_deg": 0, "s_center": 0.25, "z": -0.5},
+    {"radius": 0.15, "length": 3.5, "angle_deg": 45, "s_center": 0.5, "z": -1.2},
+    {"radius": 0.10, "length": 3.0, "angle_deg": -60, "s_center": 0.75, "z": -1.8},
+    {"radius": 0.12, "length": 3.2, "angle_deg": 90, "s_center": 0.0, "z": -2.2}
   ],
-  "spheres": [{"radius": 0.35, "s": 0.82, "offset_u": 0.3, "z": -0.65}],
-  "noise": {
-    "enable": true,
-    "amplitude": 0.035,
-    "corr_length": 0.5,
-    "octaves": 4,
-    "gain": 0.55,
-    "apply_to": ["trench_walls", "trench_bottom", "pipe*_pipe_side"]
-  }
+  "spheres": [{"radius": 0.25, "s": 0.4, "z": -1.5}],
+  "noise": {"enable": true, "amplitude": 0.02, "corr_length": 0.4, "octaves": 2, "gain": 0.5}
 }
 ```
 

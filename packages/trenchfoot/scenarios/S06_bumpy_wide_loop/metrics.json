@@ -1,16 +1,16 @@
 {
   "surface_area_by_group": {
-    "trench_bottom": 53.20937308936425,
-    "trench_cap_for_volume": 61.10535786473372,
-    "trench_walls": 73.07055073031871,
-    "ground_surface": 571.2848790415146,
-    "pipe0_pipe_side": 6.90745504769378,
-    "pipe0_pipe_cap_neg": 0.10171494665214975,
-    "pipe0_pipe_cap_pos": 0.10171494706638103,
-    "pipe1_pipe_side": 4.261533888433785,
-    "pipe1_pipe_cap_neg": 0.06153126413124749,
-    "pipe1_pipe_cap_pos": 0.06153126416703536,
-    "sphere0": 1.53629132028894
+    "trench_bottom": 56.3121473979779,
+    "trench_cap_for_volume": 61.10535782948724,
+    "trench_walls": 44.48484031121821,
+    "ground_surface": 320.3500643132505,
+    "pipe0_pipe_side": 6.89941831500234,
+    "pipe0_pipe_cap_neg": 0.10171494657871848,
+    "pipe0_pipe_cap_pos": 0.10171494657871843,
+    "pipe1_pipe_side": 4.342173705038311,
+    "pipe1_pipe_cap_neg": 0.06153126397971859,
+    "pipe1_pipe_cap_pos": 0.06153126397971859,
+    "sphere0": 1.128703827603069
   },
   "closed_surface_sets": {
     "trench_closed_groups": [
@@ -20,13 +20,13 @@
     ]
   },
   "volumes": {
-    "trench_from_surface": -29.549085746556727,
-    "trench_flux_integral_div1": -29.549085746556727
+    "trench_from_surface": -17.122161702529255,
+    "trench_flux_integral_div1": -17.122161702529255
   },
-  "footprint_area_top": 61.10535786473372,
-  "footprint_area_bottom": 53.20937308936425,
+  "footprint_area_top": 61.10535782948724,
+  "footprint_area_bottom": 56.3121473979779,
   "width_top": 2.6,
-  "width_bottom": 2.2640000000000002,
+  "width_bottom": 2.396,
   "noise": {
     "enable": true,
     "amplitude": 0.035,

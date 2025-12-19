@@ -281,3 +281,94 @@ def test_gallery_helpers(tmp_path):
     gallery_path = tmp_path / "gallery.md"
     write_gallery(gallery_path, report, base=tmp_path)
     assert gallery_path.read_text() == markdown
+
+
+def test_cap_excluded_from_obj_but_kept_for_metrics(tmp_path):
+    """Verify trench_cap_for_volume is kept for metrics but excluded from OBJ export."""
+    spec = scene_spec_from_dict(_minimal_spec_dict())
+    result = generate_surface_mesh(spec, make_preview=False)
+
+    # Cap should be in groups (needed for signed volume metrics)
+    assert "trench_cap_for_volume" in result.groups, "Cap should exist in groups for metrics"
+
+    # Metrics should include cap in surface area calculations
+    assert "trench_cap_for_volume" in result.metrics["surface_area_by_group"], (
+        "Cap should be included in metrics surface area"
+    )
+
+    # But cap should NOT appear in exported OBJ file
+    files = result.persist(tmp_path)
+    obj_content = files.obj_path.read_text()
+    assert "trench_cap_for_volume" not in obj_content, (
+        "Cap group should not be written to OBJ - trenches should be open-topped"
+    )
+
+
+def test_ground_follows_trench_outline(tmp_path):
+    """Verify ground plane follows trench outline instead of being axis-aligned box."""
+    # Use L-shaped trench to test non-rectangular ground
+    spec_dict = {
+        "path_xy": [[0.0, 0.0], [5.0, 0.0], [5.0, 3.0]],
+        "width": 1.0,
+        "depth": 0.8,
+        "wall_slope": 0.1,
+        "ground": {"z0": 0.0, "slope": [0.0, 0.0], "size_margin": 1.5},
+        "pipes": [],
+        "boxes": [],
+        "spheres": [],
+        "noise": {"enable": False},
+    }
+    spec = scene_spec_from_dict(spec_dict)
+    result = generate_surface_mesh(spec, make_preview=False)
+
+    assert "ground_surface" in result.groups, "Ground surface should exist"
+    V, F = result.groups["ground_surface"]
+
+    # Ground should have more than 4 vertices (not a simple rectangle)
+    # An L-shaped trench with offset margin creates a polygon with ~12+ vertices
+    assert len(V) > 4, (
+        f"Ground should follow L-shape outline, not be a simple rectangle. "
+        f"Got {len(V)} vertices, expected >4"
+    )
+
+
+def test_circular_well_scenario_exists():
+    """Verify S07 circular well scenario is defined and has expected properties."""
+    scenarios = default_scenarios()
+    s07 = next((s for s in scenarios if s.name == "S07_circular_well"), None)
+    assert s07 is not None, "S07_circular_well scenario should exist"
+
+    # Should have multiple pipes at different depths
+    pipes = s07.spec.get("pipes", [])
+    assert len(pipes) >= 4, "Circular well should have at least 4 criss-crossing pipes"
+
+    # Pipes should have varying radii
+    radii = {p["radius"] for p in pipes}
+    assert len(radii) >= 3, "Pipes should have at least 3 different diameters"
+
+    # Pipes should be at different depths
+    depths = {p.get("z", 0) for p in pipes}
+    assert len(depths) >= 3, "Pipes should be at different elevations"
+
+
+def test_circular_well_generates_surface(tmp_path):
+    """Verify S07 circular well generates a valid surface mesh."""
+    scenarios = default_scenarios()
+    s07 = next((s for s in scenarios if s.name == "S07_circular_well"), None)
+    if s07 is None:
+        pytest.skip("S07_circular_well not yet implemented")
+
+    report = generate_scenarios(
+        tmp_path / "scenarios",
+        scenarios=[s07],
+        make_preview=False,
+        make_volumes=False,
+        write_summary_json=False,
+    )
+
+    assert len(report.scenarios) == 1
+    summary = report.scenarios[0]
+    assert summary.surface_obj.exists(), "Surface OBJ should be generated"
+
+    # Verify it has expected pipe count from scenario summary
+    assert summary.object_counts["pipes"] >= 4, "Should have at least 4 pipes"
