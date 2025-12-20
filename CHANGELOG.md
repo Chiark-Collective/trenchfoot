@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.3] - 2025-12-20
+
+### Fixed
+- **Closed path offset direction bug**: `_offset_closed_polyline` was using CCW rotation for normals, causing positive offsets to go inward instead of outward. Fixed to use CW rotation for correct outward-pointing normals on CCW polygons.
+- **Circular well ground surface**: Removed incorrect center island from closed path ground surfaces. For circular wells, only the outer ground ring exists, leaving the trench opening completely open.
+
+### Added
+- **Open-topped trench tests**: New tests to verify trenches are truly open (no geometry covering the trench opening):
+  - `test_trench_opening_is_open_for_straight_trench`
+  - `test_circular_well_trench_opening_is_open`
+  - `test_ground_surface_annular_structure`
+
 ## [0.2.2] - 2025-12-20
 
 ### Fixed

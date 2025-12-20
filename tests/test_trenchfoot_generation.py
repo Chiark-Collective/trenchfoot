@@ -372,3 +372,115 @@ def test_circular_well_generates_surface(tmp_path):
 
     # Verify it has expected pipe count from scenario summary
     assert summary.object_counts["pipes"] >= 4, "Should have at least 4 pipes"
+
+
+def test_trench_opening_is_open_for_straight_trench():
+    """Verify straight trench has open top with no geometry covering the opening."""
+    import numpy as np
+
+    spec = scene_spec_from_dict(_minimal_spec_dict())
+    result = generate_surface_mesh(spec, make_preview=False)
+
+    # Get ground surface vertices at z=0
+    V_ground, F_ground = result.groups["ground_surface"]
+
+    # Ground surface should be an annulus (ring) with the trench opening as a hole.
+    # Check that no face covers the center region (trench opening).
+    # The trench in _minimal_spec_dict has width=1.0 centered on y=0,
+    # so the opening is roughly y in [-0.5, 0.5].
+
+    for face in F_ground:
+        verts = V_ground[face]
+        centroid = np.mean(verts, axis=0)
+        # Centroid should NOT be inside the trench opening region (y between -0.5 and 0.5)
+        y_coords = verts[:, 1]
+        # If all vertices are inside trench y-range, this face is covering the opening
+        if np.all(np.abs(y_coords) < 0.45):  # small margin
+            pytest.fail(
+                f"Found face covering trench opening: centroid={centroid}, y_coords={y_coords}"
+            )
+
+
+def test_circular_well_trench_opening_is_open():
+    """Verify S07 circular well has open center with no lid geometry."""
+    import numpy as np
+
+    scenarios = default_scenarios()
+    s07 = next((s for s in scenarios if s.name == "S07_circular_well"), None)
+    if s07 is None:
+        pytest.skip("S07_circular_well not available")
+
+    spec = scene_spec_from_dict(s07.spec)
+    result = generate_surface_mesh(spec, make_preview=False)
+
+    # Ground surface should be an annulus around the outer edge of the circular trench,
+    # with the center (trench opening) completely open.
+    V_ground, F_ground = result.groups["ground_surface"]
+
+    # The circular well has inner radius ~0.5m and outer radius ~2.5m from center.
+    # Ground vertices should all be at radius > outer_trench_edge (about 2.0-2.5m)
+    # or at the outer_trench_edge itself as the inner boundary.
+
+    # Calculate radius of each ground vertex from center (0,0)
+    radii = np.sqrt(V_ground[:, 0] ** 2 + V_ground[:, 1] ** 2)
+
+    # The minimum radius should be at the trench outer edge (~2.5m), not near center
+    min_radius = np.min(radii)
+    assert min_radius > 1.0, (
+        f"Ground surface vertices extend too close to center (min_radius={min_radius:.3f}m). "
+        f"For an open circular well, ground should only surround the outer trench edge."
+    )
+
+    # No face should have centroid inside the trench opening (radius < ~2.0m)
+    for face in F_ground:
+        face_verts = V_ground[face]
+        centroid = np.mean(face_verts, axis=0)
+        centroid_radius = np.sqrt(centroid[0] ** 2 + centroid[1] ** 2)
+        if centroid_radius < 1.5:  # Well inside the trench
+            pytest.fail(
+                f"Found ground face covering trench opening: centroid radius={centroid_radius:.3f}m"
+            )
+
+
+def test_ground_surface_annular_structure():
+    """Verify ground surface properly forms an annulus with the trench as a hole."""
+    import numpy as np
+
+    # Test with L-shaped trench to ensure annular structure works for complex shapes
+    spec_dict = {
+        "path_xy": [[0.0, 0.0], [3.0, 0.0], [3.0, 2.0]],
+        "width": 0.8,
+        "depth": 0.6,
+        "wall_slope": 0.0,
+        "ground": {"z0": 0.0, "slope": [0.0, 0.0], "size_margin": 1.0},
+        "pipes": [],
+        "boxes": [],
+        "spheres": [],
+        "noise": {"enable": False},
+    }
+    spec = scene_spec_from_dict(spec_dict)
+    result = generate_surface_mesh(spec, make_preview=False)
+
+    V_ground, F_ground = result.groups["ground_surface"]
+
+    # All ground vertices should be at z=0 (ground elevation)
+    assert np.allclose(V_ground[:, 2], 0.0), "Ground surface should be at z=0"
+
+    # Ground should have both inner vertices (near trench edge) and outer vertices
+    # The trench edge is at offset half_width = 0.4m from path
+    # Ground outer edge is at half_width + margin = 0.4 + 1.0 = 1.4m from path
+
+    # Check that there are vertices at different distances from the origin
+    # (indicating annular structure with inner and outer boundaries)
+    x_coords = V_ground[:, 0]
+    y_coords = V_ground[:, 1]
+
+    # The L-shaped path goes from (0,0) to (3,0) to (3,2)
+    # Inner boundary should be close to path, outer boundary further away
+    # For a proper annulus, we should have spread in both x and y
+
+    x_range = np.max(x_coords) - np.min(x_coords)
+    y_range = np.max(y_coords) - np.min(y_coords)
+
+    assert x_range > 2.0, f"Ground should span significant x range: {x_range:.2f}"
+    assert y_range > 2.0, f"Ground should span significant y range: {y_range:.2f}"

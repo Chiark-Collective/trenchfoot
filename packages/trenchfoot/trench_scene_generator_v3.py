@@ -128,6 +128,7 @@ def _offset_closed_polyline(path: List[Tuple[float,float]], offset: float) -> Li
         raise ValueError("Closed polyline needs at least 3 points")
 
     # Compute tangents treating path as closed loop
+    # For CCW-oriented polygons, use CW rotation to get outward-pointing normals
     tangents = []
     normals = []
     for i in range(n):
@@ -135,7 +136,7 @@ def _offset_closed_polyline(path: List[Tuple[float,float]], offset: float) -> Li
         if np.linalg.norm(t) < 1e-12:
             t = np.array([1.0, 0.0])
         tangents.append(t)
-        normals.append(_rotate_ccw(t))
+        normals.append(_rotate_cw(t))  # CW rotation gives outward normal for CCW polygon
 
     # Compute offset points with proper miter at each vertex
     offset_pts = []
@@ -763,8 +764,8 @@ def make_ground_surface_plane(path_xy: List[Tuple[float,float]], width_top: floa
     the trench opening as an open hole. This creates a natural shape that
     hugs L-shaped, U-shaped, and curved trenches.
 
-    For closed paths (like circles), also creates a center island inside
-    the inner edge of the annular trench.
+    For closed paths (like circles), the ground surface is a ring around the
+    outer edge of the trench, with the trench opening left completely open.
     """
     half_top = width_top / 2.0
     m = float(max(0.5, ground.size_margin))
@@ -772,36 +773,23 @@ def make_ground_surface_plane(path_xy: List[Tuple[float,float]], width_top: floa
     is_closed = _is_path_closed(path_xy)
 
     if is_closed:
-        # For closed paths, we have:
-        # - Outer ground: annulus from ground_outer to trench_outer
-        # - Center island: filled polygon inside trench_inner
+        # For closed paths (like circular wells), the ground is an annulus
+        # from the outer ground boundary to the outer edge of the trench opening.
+        # The center (inside the trench) is left completely open.
 
-        # Trench boundaries
+        # Trench outer boundary (edge of trench opening)
         trench_outer = np.array(_offset_closed_polyline(path_xy, half_top), float)
-        trench_inner = np.array(_offset_closed_polyline(path_xy, -half_top), float)
 
-        # Ground outer boundary
+        # Ground outer boundary (edge of ground surface)
         ground_outer = np.array(_offset_closed_polyline(path_xy, half_top + m), float)
 
         # Ensure proper orientations
         trench_outer = _ensure_ccw(trench_outer)
-        trench_inner = _ensure_ccw(trench_inner)
         ground_outer = _ensure_ccw(ground_outer)
 
-        # Outer ground annulus
-        outer_combined_xy, outer_tris = _triangulate_annulus(ground_outer, trench_outer)
-        outer_Vg = np.array([[x, y, gfun(x, y)] for (x, y) in outer_combined_xy], float)
-
-        # Center island (simple filled polygon)
-        center_tris = _ear_clipping_triangulation(trench_inner)
-        center_Vg = np.array([[x, y, gfun(x, y)] for (x, y) in trench_inner], float)
-
-        # Combine into single ground surface
-        n_outer_verts = len(outer_Vg)
-        center_tris_offset = center_tris + n_outer_verts
-
-        Vg = np.vstack([outer_Vg, center_Vg])
-        tris = np.vstack([outer_tris, center_tris_offset])
+        # Ground annulus: from ground_outer to trench_outer
+        combined_xy, tris = _triangulate_annulus(ground_outer, trench_outer)
+        Vg = np.array([[x, y, gfun(x, y)] for (x, y) in combined_xy], float)
 
         return {"ground_surface": (Vg, tris)}
     else:
