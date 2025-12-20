@@ -543,54 +543,85 @@ def make_trench_from_path_sloped(path_xy: List[Tuple[float,float]], width_top: f
     }
     return groups, poly_top, poly_bot, extra
 
-def _triangulate_polygon_with_hole(outer: np.ndarray, hole: np.ndarray) -> np.ndarray:
-    """Triangulate a polygon with a single hole using bridge technique + ear clipping.
+def _triangulate_annulus(outer: np.ndarray, inner: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Triangulate the annular region between outer and inner polygons.
 
-    Both outer and hole should be CCW oriented. The hole represents the opening
-    that should be cut out of the outer polygon.
+    Creates triangles that fill ONLY the region between the two polygons,
+    leaving the inner polygon area as an open hole.
+
+    Both polygons should be CCW oriented. Returns (vertices, faces) where
+    vertices is the concatenation of outer and inner, and faces index into it.
     """
-    # Find closest pair of vertices between outer and hole
-    min_dist = float("inf")
-    bridge_outer_idx = 0
-    bridge_hole_idx = 0
-    for i, p_outer in enumerate(outer):
-        for j, p_hole in enumerate(hole):
-            d = np.linalg.norm(p_outer - p_hole)
-            if d < min_dist:
-                min_dist = d
-                bridge_outer_idx = i
-                bridge_hole_idx = j
-
-    # Build combined polygon: outer[0..bridge] -> hole[bridge..end, 0..bridge] reversed -> outer[bridge..end]
-    # The hole is traversed in reverse (CW) to create the correct winding
     n_outer = len(outer)
-    n_hole = len(hole)
+    n_inner = len(inner)
 
-    combined = []
-    # First part of outer (up to and including bridge point)
-    for i in range(bridge_outer_idx + 1):
-        combined.append(outer[i])
-    # Hole traversed in reverse starting from bridge point
-    for i in range(n_hole):
-        idx = (bridge_hole_idx - i) % n_hole
-        combined.append(hole[idx])
-    # Back to outer bridge point (creates second bridge edge)
-    combined.append(outer[bridge_outer_idx].copy())
-    # Rest of outer
-    for i in range(bridge_outer_idx + 1, n_outer):
-        combined.append(outer[i])
+    # Vertices: outer first, then inner
+    verts = np.vstack([outer, inner])
 
-    combined = np.array(combined, float)
-    # Triangulate the combined polygon
-    return _ear_clipping_triangulation(combined)
+    # Create triangles by "zipping" around the two polygons
+    # This works well when both polygons have similar vertex counts
+    # For different counts, we need to handle the ratio
+
+    tris = []
+
+    # Use a marching approach: for each outer edge, connect to nearest inner vertices
+    # and vice versa. This creates a proper triangulated annulus.
+
+    # Simple approach: interpolate around both polygons simultaneously
+    # treating them as having a common parameter t in [0, 1]
+
+    i_outer = 0  # current outer vertex index
+    i_inner = 0  # current inner vertex index
+    t_outer = 0.0  # parameter position on outer polygon
+    t_inner = 0.0  # parameter position on inner polygon
+
+    outer_step = 1.0 / n_outer
+    inner_step = 1.0 / n_inner
+
+    # March around creating triangles
+    while i_outer < n_outer or i_inner < n_inner:
+        # Current vertices
+        o_curr = i_outer % n_outer
+        o_next = (i_outer + 1) % n_outer
+        i_curr = i_inner % n_inner
+        i_next = (i_inner + 1) % n_inner
+
+        # Indices in combined vertex array
+        vo_curr = o_curr
+        vo_next = o_next
+        vi_curr = n_outer + i_curr
+        vi_next = n_outer + i_next
+
+        if i_outer >= n_outer:
+            # Finished outer, just advance inner
+            tris.append([vo_curr, vi_next, vi_curr])
+            i_inner += 1
+            t_inner += inner_step
+        elif i_inner >= n_inner:
+            # Finished inner, just advance outer
+            tris.append([vo_curr, vo_next, vi_curr])
+            i_outer += 1
+            t_outer += outer_step
+        elif t_outer + outer_step <= t_inner + inner_step:
+            # Advance outer - create triangle: o_curr, o_next, i_curr
+            tris.append([vo_curr, vo_next, vi_curr])
+            i_outer += 1
+            t_outer += outer_step
+        else:
+            # Advance inner - create triangle: o_curr, i_next, i_curr
+            tris.append([vo_curr, vi_next, vi_curr])
+            i_inner += 1
+            t_inner += inner_step
+
+    return verts, np.array(tris, dtype=int)
 
 
 def make_ground_surface_plane(path_xy: List[Tuple[float,float]], width_top: float, ground) -> Dict[str,Tuple[np.ndarray,np.ndarray]]:
     """Create ground surface as an offset polygon around the trench opening.
 
-    Instead of an axis-aligned bounding box, the ground follows the trench
-    outline with a constant margin, creating a more natural shape that hugs
-    L-shaped, U-shaped, and curved trenches.
+    The ground surface forms an annulus (ring) around the trench, leaving
+    the trench opening as an open hole. This creates a natural shape that
+    hugs L-shaped, U-shaped, and curved trenches.
     """
     half_top = width_top / 2.0
     m = float(max(0.5, ground.size_margin))
@@ -604,38 +635,8 @@ def make_ground_surface_plane(path_xy: List[Tuple[float,float]], width_top: floa
     L_outer, R_outer = _offset_polyline(path_xy, half_top + m)
     outer_ring = _ensure_ccw(_ring_from_LR(L_outer, R_outer))
 
-    # Triangulate the polygon with hole
-    tris = _triangulate_polygon_with_hole(outer_ring, inner_ring)
-
-    # Build vertex array with all unique vertices from combined polygon
-    # The triangulation indices reference the combined polygon vertices
-    n_outer = len(outer_ring)
-    n_hole = len(inner_ring)
-
-    # Find bridge indices (same logic as in triangulation)
-    min_dist = float("inf")
-    bridge_outer_idx = 0
-    bridge_hole_idx = 0
-    for i, p_outer in enumerate(outer_ring):
-        for j, p_hole in enumerate(inner_ring):
-            d = np.linalg.norm(p_outer - p_hole)
-            if d < min_dist:
-                min_dist = d
-                bridge_outer_idx = i
-                bridge_hole_idx = j
-
-    # Build the same combined vertex array as triangulation uses
-    combined_xy = []
-    for i in range(bridge_outer_idx + 1):
-        combined_xy.append(outer_ring[i])
-    for i in range(n_hole):
-        idx = (bridge_hole_idx - i) % n_hole
-        combined_xy.append(inner_ring[idx])
-    combined_xy.append(outer_ring[bridge_outer_idx].copy())
-    for i in range(bridge_outer_idx + 1, n_outer):
-        combined_xy.append(outer_ring[i])
-
-    combined_xy = np.array(combined_xy, float)
+    # Triangulate the annular region (leaves hole open)
+    combined_xy, tris = _triangulate_annulus(outer_ring, inner_ring)
 
     # Apply ground elevation to get 3D vertices
     Vg = np.array([[x, y, gfun(x, y)] for (x, y) in combined_xy], float)
