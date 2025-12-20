@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.1] - 2025-12-20
+
+### Fixed
+- **Annular triangulation bug**: Ground plane was incorrectly filling in the trench opening with triangles instead of leaving it as a hole. Replaced bridge+ear-clipping algorithm with proper annular triangulation that "zips" around both polygon boundaries.
+
 ## [0.2.0] - 2025-12-19
 
 ### Added
