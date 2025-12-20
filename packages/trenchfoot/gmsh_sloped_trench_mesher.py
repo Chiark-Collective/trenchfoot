@@ -48,6 +48,42 @@ def _normalize(v):
 
 def _rotate_ccw(v): return np.array([-v[1], v[0]], float)
 
+def _is_path_closed(path, threshold=0.01):
+    """Detect if path is explicitly closed (first and last points nearly identical)."""
+    if len(path) < 3:
+        return False
+    P = np.array(path, float)
+    first_last_dist = np.linalg.norm(P[0] - P[-1])
+    return first_last_dist < threshold
+
+def _offset_closed_polyline(path, offset):
+    """Offset a closed polyline, returning a single closed ring."""
+    P = np.array(path, float)
+    n = len(P)
+    if n < 3:
+        raise ValueError("Closed polyline needs at least 3 points")
+    tangents = []
+    normals = []
+    for i in range(n):
+        t = _normalize(P[(i+1) % n] - P[i])
+        if np.linalg.norm(t) < 1e-12:
+            t = np.array([1.0, 0.0])
+        tangents.append(t)
+        normals.append(np.array([-t[1], t[0]], float))
+    offset_pts = []
+    for k in range(n):
+        t_prev, n_prev = tangents[(k-1) % n], normals[(k-1) % n]
+        t_next, n_next = tangents[k], normals[k]
+        L1_p = P[k] + offset * n_prev
+        L1_d = t_prev
+        L2_p = P[k] + offset * n_next
+        L2_d = t_next
+        pt = _line_intersection_2d(L1_p, L1_d, L2_p, L2_d)
+        if pt is None:
+            pt = 0.5 * (L1_p + L2_p)
+        offset_pts.append(pt)
+    return offset_pts
+
 def _line_intersection_2d(p, d, q, e):
     M = np.array([d, -e], float).T; det = np.linalg.det(M)
     if abs(det) < 1e-12: return None
@@ -173,35 +209,99 @@ def generate_trench_volume(
         half_top = width_top / 2.0
         half_bot = max(1e-3, half_top - slope * depth)
 
-        Ltop, Rtop = _offset_polyline(path_xy, half_top)
-        Lbot, Rbot = _offset_polyline(path_xy, half_bot)
-        ring_top = _ring_from_LR(Ltop, Rtop)
-        ring_bot = _ring_from_LR(Lbot, Rbot)
+        is_closed = _is_path_closed(path_xy)
 
-        ring_top_xyz = [(x, y, g(x, y)) for (x, y) in ring_top]
-        ring_bot_xyz = [(x, y, g(x, y) - depth) for (x, y) in ring_bot]
+        if is_closed:
+            # For closed paths, create annular (ring-shaped) trench with outer and inner walls
+            outer_top = np.array(_offset_closed_polyline(path_xy, half_top), float)
+            inner_top = np.array(_offset_closed_polyline(path_xy, -half_top), float)
+            outer_bot = np.array(_offset_closed_polyline(path_xy, half_bot), float)
+            inner_bot = np.array(_offset_closed_polyline(path_xy, -half_bot), float)
 
-        top_loop = _add_closed_wire_xyz(ring_top_xyz)
-        bot_loop = _add_closed_wire_xyz(ring_bot_xyz)
+            outer_top_xyz = [(x, y, g(x, y)) for (x, y) in outer_top]
+            inner_top_xyz = [(x, y, g(x, y)) for (x, y) in inner_top]
+            outer_bot_xyz = [(x, y, g(x, y) - depth) for (x, y) in outer_bot]
+            inner_bot_xyz = [(x, y, g(x, y) - depth) for (x, y) in inner_bot]
 
-        outDimTags = []
-        try:
-            gmsh.model.occ.addThruSections(
-                [top_loop, bot_loop], makeSolid=True, makeRuled=True, outDimTags=outDimTags
-            )
-        except TypeError:  # gmsh >= 4.14 removed outDimTags kwarg
-            outDimTags = gmsh.model.occ.addThruSections(
-                [top_loop, bot_loop], makeSolid=True, makeRuled=True
-            )
-            if outDimTags is None:
-                outDimTags = []
-        gmsh.model.occ.healShapes()
-        gmsh.model.occ.removeAllDuplicates()
-        gmsh.model.occ.synchronize()
+            # Create outer and inner wire loops at top and bottom
+            outer_top_loop = _add_closed_wire_xyz(outer_top_xyz)
+            inner_top_loop = _add_closed_wire_xyz(inner_top_xyz)
+            outer_bot_loop = _add_closed_wire_xyz(outer_bot_xyz)
+            inner_bot_loop = _add_closed_wire_xyz(inner_bot_xyz)
 
-        vols = [tag for (dim, tag) in outDimTags if dim == 3]
-        assert len(vols) >= 1, "Loft did not create a volume"
-        trench_vol = vols[0]
+            # Outer wall: loft from outer_top to outer_bot
+            outDimTags_outer = []
+            try:
+                gmsh.model.occ.addThruSections(
+                    [outer_top_loop, outer_bot_loop], makeSolid=False, makeRuled=True, outDimTags=outDimTags_outer
+                )
+            except TypeError:
+                outDimTags_outer = gmsh.model.occ.addThruSections(
+                    [outer_top_loop, outer_bot_loop], makeSolid=False, makeRuled=True
+                ) or []
+
+            # Inner wall: loft from inner_top to inner_bot
+            outDimTags_inner = []
+            try:
+                gmsh.model.occ.addThruSections(
+                    [inner_top_loop, inner_bot_loop], makeSolid=False, makeRuled=True, outDimTags=outDimTags_inner
+                )
+            except TypeError:
+                outDimTags_inner = gmsh.model.occ.addThruSections(
+                    [inner_top_loop, inner_bot_loop], makeSolid=False, makeRuled=True
+                ) or []
+
+            # Create top and bottom surfaces (annular)
+            top_surf = gmsh.model.occ.addPlaneSurface([outer_top_loop, inner_top_loop])
+            bot_surf = gmsh.model.occ.addPlaneSurface([outer_bot_loop, inner_bot_loop])
+
+            # Collect all surfaces to form a shell
+            all_surfs = [top_surf, bot_surf]
+            all_surfs.extend([tag for (dim, tag) in outDimTags_outer if dim == 2])
+            all_surfs.extend([tag for (dim, tag) in outDimTags_inner if dim == 2])
+
+            # Create surface loop and volume
+            gmsh.model.occ.synchronize()
+            surf_loop = gmsh.model.occ.addSurfaceLoop(all_surfs)
+            trench_vol = gmsh.model.occ.addVolume([surf_loop])
+
+            gmsh.model.occ.healShapes()
+            gmsh.model.occ.removeAllDuplicates()
+            gmsh.model.occ.synchronize()
+
+            # Use outer_top for ring_top in clearance calculations
+            ring_top = outer_top
+        else:
+            # Original logic for open paths
+            Ltop, Rtop = _offset_polyline(path_xy, half_top)
+            Lbot, Rbot = _offset_polyline(path_xy, half_bot)
+            ring_top = _ring_from_LR(Ltop, Rtop)
+            ring_bot = _ring_from_LR(Lbot, Rbot)
+
+            ring_top_xyz = [(x, y, g(x, y)) for (x, y) in ring_top]
+            ring_bot_xyz = [(x, y, g(x, y) - depth) for (x, y) in ring_bot]
+
+            top_loop = _add_closed_wire_xyz(ring_top_xyz)
+            bot_loop = _add_closed_wire_xyz(ring_bot_xyz)
+
+            outDimTags = []
+            try:
+                gmsh.model.occ.addThruSections(
+                    [top_loop, bot_loop], makeSolid=True, makeRuled=True, outDimTags=outDimTags
+                )
+            except TypeError:  # gmsh >= 4.14 removed outDimTags kwarg
+                outDimTags = gmsh.model.occ.addThruSections(
+                    [top_loop, bot_loop], makeSolid=True, makeRuled=True
+                )
+                if outDimTags is None:
+                    outDimTags = []
+            gmsh.model.occ.healShapes()
+            gmsh.model.occ.removeAllDuplicates()
+            gmsh.model.occ.synchronize()
+
+            vols = [tag for (dim, tag) in outDimTags if dim == 3]
+            assert len(vols) >= 1, "Loft did not create a volume"
+            trench_vol = vols[0]
 
         pipe_cfgs = cfg.get("pipes", [])
         cum_lengths, total_length = _polyline_lengths(path_xy)

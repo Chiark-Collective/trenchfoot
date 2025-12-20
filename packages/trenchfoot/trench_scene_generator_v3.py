@@ -77,6 +77,19 @@ def _sample_polyline_at_s(path: List[Tuple[float,float]], s: float):
         t = seg / L; u = (s_abs - cum[i]) / L; pos = (1-u)*P[i] + u*P[i+1]
     return pos, t
 
+def _is_path_closed(path: List[Tuple[float,float]], threshold: float = 0.01) -> bool:
+    """Detect if a path is explicitly closed (first and last points nearly identical).
+
+    Returns True only if the first and last points are within threshold distance.
+    Use a small threshold (default 0.01) to only catch truly closed paths where
+    the endpoint is repeated.
+    """
+    if len(path) < 3:
+        return False
+    P = np.array(path, float)
+    first_last_dist = np.linalg.norm(P[0] - P[-1])
+    return first_last_dist < threshold
+
 def _offset_polyline(path: List[Tuple[float,float]], offset: float):
     P = np.array(path, float); n = len(P)
     if n < 2: raise ValueError("Polyline needs at least 2 points")
@@ -102,6 +115,43 @@ def _offset_polyline(path: List[Tuple[float,float]], offset: float):
     left_pts.append(P[-1] + offset * normals[-1])
     right_pts.append(P[-1] - offset * normals[-1])
     return left_pts, right_pts
+
+def _offset_closed_polyline(path: List[Tuple[float,float]], offset: float) -> List[np.ndarray]:
+    """Offset a closed polyline, returning a single closed ring.
+
+    Unlike _offset_polyline which returns left/right sides for open paths,
+    this returns a single continuous closed ring for paths where first ≈ last point.
+    """
+    P = np.array(path, float)
+    n = len(P)
+    if n < 3:
+        raise ValueError("Closed polyline needs at least 3 points")
+
+    # Compute tangents treating path as closed loop
+    tangents = []
+    normals = []
+    for i in range(n):
+        t = _normalize(P[(i+1) % n] - P[i])
+        if np.linalg.norm(t) < 1e-12:
+            t = np.array([1.0, 0.0])
+        tangents.append(t)
+        normals.append(_rotate_ccw(t))
+
+    # Compute offset points with proper miter at each vertex
+    offset_pts = []
+    for k in range(n):
+        t_prev, n_prev = tangents[(k-1) % n], normals[(k-1) % n]
+        t_next, n_next = tangents[k], normals[k]
+        L1_p = P[k] + offset * n_prev
+        L1_d = t_prev
+        L2_p = P[k] + offset * n_next
+        L2_d = t_next
+        pt = _line_intersection_2d(L1_p, L1_d, L2_p, L2_d)
+        if pt is None:
+            pt = 0.5 * (L1_p + L2_p)
+        offset_pts.append(pt)
+
+    return offset_pts
 
 def _polygon_area_2d(poly_xy: np.ndarray) -> float:
     x = poly_xy[:,0]; y = poly_xy[:,1]
@@ -501,46 +551,136 @@ def make_trench_from_path_sloped(path_xy: List[Tuple[float,float]], width_top: f
     half_top = width_top/2.0
     shrink = max(0.0, wall_slope * depth)
     half_bot = max(1e-3, half_top - shrink)
-    L_top, R_top = _offset_polyline(path_xy, half_top)
-    L_bot, R_bot = _offset_polyline(path_xy, half_bot)
-    poly_top = _ensure_ccw(_ring_from_LR(L_top, R_top))
-    poly_bot = _ensure_ccw(_ring_from_LR(L_bot, R_bot))
 
-    gfun = _ground_fn(ground)
-    # Top and bottom rings lie on the ground plane and ground-depth respectively
-    z_top = np.array([gfun(x,y) for x,y in poly_top]); z_bot = np.array([gfun(x,y) - depth for x,y in poly_bot])
-    tris_top = _ear_clipping_triangulation(poly_top)
-    tris_bot = _ear_clipping_triangulation(poly_bot)
-    V_cap = np.column_stack([poly_top, z_top])
-    V_bottom = np.column_stack([poly_bot, z_bot])
-    F_cap = tris_top
-    F_bottom = tris_bot[:, ::-1]  # outward
+    is_closed = _is_path_closed(path_xy)
 
-    # Walls: connect corresponding indices
-    N = len(poly_top); assert N == len(poly_bot)
-    walls_V = []; walls_F = []
-    for i in range(N):
-        j=(i+1)%N
-        A_top = np.array([poly_top[i,0], poly_top[i,1], z_top[i]])
-        B_top = np.array([poly_top[j,0], poly_top[j,1], z_top[j]])
-        A_bot = np.array([poly_bot[i,0], poly_bot[i,1], z_bot[i]])
-        B_bot = np.array([poly_bot[j,0], poly_bot[j,1], z_bot[j]])
-        base=len(walls_V)
-        walls_V.extend([A_top, B_top, B_bot, A_bot])
-        walls_F.extend([[base, base+1, base+2], [base, base+2, base+3]])
-    V_walls = np.array(walls_V,float); F_walls = np.array(walls_F,int)
+    if is_closed:
+        # For closed paths (like circles), create outer/inner rings
+        # Outer ring: centerline offset outward (positive)
+        # Inner ring: centerline offset inward (negative)
+        outer_top = np.array(_offset_closed_polyline(path_xy, half_top), float)
+        inner_top = np.array(_offset_closed_polyline(path_xy, -half_top), float)
+        outer_bot = np.array(_offset_closed_polyline(path_xy, half_bot), float)
+        inner_bot = np.array(_offset_closed_polyline(path_xy, -half_bot), float)
+
+        # Ensure CCW orientation (outer should be CCW, inner CW for proper normals)
+        outer_top = _ensure_ccw(outer_top)
+        outer_bot = _ensure_ccw(outer_bot)
+        # Inner rings should go opposite direction
+        if _polygon_area_2d(inner_top) > 0:
+            inner_top = inner_top[::-1].copy()
+        if _polygon_area_2d(inner_bot) > 0:
+            inner_bot = inner_bot[::-1].copy()
+
+        gfun = _ground_fn(ground)
+
+        # For closed trenches, we need outer wall, inner wall, and bottom (no cap for annular trench)
+        # Actually, for annular trench, the "bottom" is an annulus and the "cap" is also an annulus
+        z_outer_top = np.array([gfun(x,y) for x,y in outer_top])
+        z_inner_top = np.array([gfun(x,y) for x,y in inner_top])
+        z_outer_bot = np.array([gfun(x,y) - depth for x,y in outer_bot])
+        z_inner_bot = np.array([gfun(x,y) - depth for x,y in inner_bot])
+
+        # Triangulate annular cap and bottom
+        cap_verts, cap_faces = _triangulate_annulus(outer_top, inner_top[::-1])  # reverse inner for CCW
+        V_cap = np.column_stack([cap_verts, np.concatenate([z_outer_top, z_inner_top[::-1]])])
+        F_cap = cap_faces
+
+        bot_verts, bot_faces = _triangulate_annulus(outer_bot, inner_bot[::-1])
+        V_bottom = np.column_stack([bot_verts, np.concatenate([z_outer_bot, z_inner_bot[::-1]])])
+        F_bottom = bot_faces[:, ::-1]  # flip for outward normals
+
+        # Outer wall: connects outer_top to outer_bot (facing outward from trench)
+        n_outer = len(outer_top)
+        walls_V = []
+        walls_F = []
+        for i in range(n_outer):
+            j = (i + 1) % n_outer
+            A_top = np.array([outer_top[i,0], outer_top[i,1], z_outer_top[i]])
+            B_top = np.array([outer_top[j,0], outer_top[j,1], z_outer_top[j]])
+            A_bot = np.array([outer_bot[i,0], outer_bot[i,1], z_outer_bot[i]])
+            B_bot = np.array([outer_bot[j,0], outer_bot[j,1], z_outer_bot[j]])
+            base = len(walls_V)
+            walls_V.extend([A_top, B_top, B_bot, A_bot])
+            # Winding for outward-facing (away from center)
+            walls_F.extend([[base, base+1, base+2], [base, base+2, base+3]])
+
+        # Inner wall: connects inner_top to inner_bot (facing inward toward center)
+        n_inner = len(inner_top)
+        for i in range(n_inner):
+            j = (i + 1) % n_inner
+            A_top = np.array([inner_top[i,0], inner_top[i,1], z_inner_top[i]])
+            B_top = np.array([inner_top[j,0], inner_top[j,1], z_inner_top[j]])
+            A_bot = np.array([inner_bot[i,0], inner_bot[i,1], z_inner_bot[i]])
+            B_bot = np.array([inner_bot[j,0], inner_bot[j,1], z_inner_bot[j]])
+            base = len(walls_V)
+            walls_V.extend([A_top, B_top, B_bot, A_bot])
+            # Winding for inward-facing (toward center) - reverse winding
+            walls_F.extend([[base, base+2, base+1], [base, base+3, base+2]])
+
+        V_walls = np.array(walls_V, float)
+        F_walls = np.array(walls_F, int)
+
+        # For closed path, poly_top is the outer ring (used for ground plane hole)
+        poly_top = outer_top
+        poly_bot = outer_bot
+
+        extra = {
+            "width_top": width_top,
+            "width_bottom": 2.0*half_bot,
+            "area_top": abs(_polygon_area_2d(outer_top)) - abs(_polygon_area_2d(inner_top)),
+            "area_bottom": abs(_polygon_area_2d(outer_bot)) - abs(_polygon_area_2d(inner_bot)),
+            "is_closed_path": True
+        }
+    else:
+        # Original logic for open paths
+        L_top, R_top = _offset_polyline(path_xy, half_top)
+        L_bot, R_bot = _offset_polyline(path_xy, half_bot)
+        poly_top = _ensure_ccw(_ring_from_LR(L_top, R_top))
+        poly_bot = _ensure_ccw(_ring_from_LR(L_bot, R_bot))
+
+        gfun = _ground_fn(ground)
+        # Top and bottom rings lie on the ground plane and ground-depth respectively
+        z_top = np.array([gfun(x,y) for x,y in poly_top])
+        z_bot = np.array([gfun(x,y) - depth for x,y in poly_bot])
+        tris_top = _ear_clipping_triangulation(poly_top)
+        tris_bot = _ear_clipping_triangulation(poly_bot)
+        V_cap = np.column_stack([poly_top, z_top])
+        V_bottom = np.column_stack([poly_bot, z_bot])
+        F_cap = tris_top
+        F_bottom = tris_bot[:, ::-1]  # outward
+
+        # Walls: connect corresponding indices
+        N = len(poly_top)
+        assert N == len(poly_bot)
+        walls_V = []
+        walls_F = []
+        for i in range(N):
+            j = (i+1) % N
+            A_top = np.array([poly_top[i,0], poly_top[i,1], z_top[i]])
+            B_top = np.array([poly_top[j,0], poly_top[j,1], z_top[j]])
+            A_bot = np.array([poly_bot[i,0], poly_bot[i,1], z_bot[i]])
+            B_bot = np.array([poly_bot[j,0], poly_bot[j,1], z_bot[j]])
+            base = len(walls_V)
+            walls_V.extend([A_top, B_top, B_bot, A_bot])
+            walls_F.extend([[base, base+1, base+2], [base, base+2, base+3]])
+        V_walls = np.array(walls_V, float)
+        F_walls = np.array(walls_F, int)
+
+        extra = {
+            "width_top": width_top,
+            "width_bottom": 2.0*half_bot,
+            "area_top": abs(_polygon_area_2d(poly_top)),
+            "area_bottom": abs(_polygon_area_2d(poly_bot)),
+            "is_closed_path": False
+        }
 
     groups = {
         "trench_bottom": (V_bottom, F_bottom),
         "trench_cap_for_volume": (V_cap, F_cap),
         "trench_walls": (V_walls, F_walls)
     }
-    extra = {
-        "width_top": width_top,
-        "width_bottom": 2.0*half_bot,
-        "area_top": abs(_polygon_area_2d(poly_top)),
-        "area_bottom": abs(_polygon_area_2d(poly_bot))
-    }
+
     return groups, poly_top, poly_bot, extra
 
 def _triangulate_annulus(outer: np.ndarray, inner: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -622,26 +762,65 @@ def make_ground_surface_plane(path_xy: List[Tuple[float,float]], width_top: floa
     The ground surface forms an annulus (ring) around the trench, leaving
     the trench opening as an open hole. This creates a natural shape that
     hugs L-shaped, U-shaped, and curved trenches.
+
+    For closed paths (like circles), also creates a center island inside
+    the inner edge of the annular trench.
     """
     half_top = width_top / 2.0
     m = float(max(0.5, ground.size_margin))
     gfun = _ground_fn(ground)
+    is_closed = _is_path_closed(path_xy)
 
-    # Inner boundary: the trench opening (same as trench top ring)
-    L_inner, R_inner = _offset_polyline(path_xy, half_top)
-    inner_ring = _ensure_ccw(_ring_from_LR(L_inner, R_inner))
+    if is_closed:
+        # For closed paths, we have:
+        # - Outer ground: annulus from ground_outer to trench_outer
+        # - Center island: filled polygon inside trench_inner
 
-    # Outer boundary: offset by additional margin
-    L_outer, R_outer = _offset_polyline(path_xy, half_top + m)
-    outer_ring = _ensure_ccw(_ring_from_LR(L_outer, R_outer))
+        # Trench boundaries
+        trench_outer = np.array(_offset_closed_polyline(path_xy, half_top), float)
+        trench_inner = np.array(_offset_closed_polyline(path_xy, -half_top), float)
 
-    # Triangulate the annular region (leaves hole open)
-    combined_xy, tris = _triangulate_annulus(outer_ring, inner_ring)
+        # Ground outer boundary
+        ground_outer = np.array(_offset_closed_polyline(path_xy, half_top + m), float)
 
-    # Apply ground elevation to get 3D vertices
-    Vg = np.array([[x, y, gfun(x, y)] for (x, y) in combined_xy], float)
+        # Ensure proper orientations
+        trench_outer = _ensure_ccw(trench_outer)
+        trench_inner = _ensure_ccw(trench_inner)
+        ground_outer = _ensure_ccw(ground_outer)
 
-    return {"ground_surface": (Vg, tris)}
+        # Outer ground annulus
+        outer_combined_xy, outer_tris = _triangulate_annulus(ground_outer, trench_outer)
+        outer_Vg = np.array([[x, y, gfun(x, y)] for (x, y) in outer_combined_xy], float)
+
+        # Center island (simple filled polygon)
+        center_tris = _ear_clipping_triangulation(trench_inner)
+        center_Vg = np.array([[x, y, gfun(x, y)] for (x, y) in trench_inner], float)
+
+        # Combine into single ground surface
+        n_outer_verts = len(outer_Vg)
+        center_tris_offset = center_tris + n_outer_verts
+
+        Vg = np.vstack([outer_Vg, center_Vg])
+        tris = np.vstack([outer_tris, center_tris_offset])
+
+        return {"ground_surface": (Vg, tris)}
+    else:
+        # Original logic for open paths
+        # Inner boundary: the trench opening (same as trench top ring)
+        L_inner, R_inner = _offset_polyline(path_xy, half_top)
+        inner_ring = _ensure_ccw(_ring_from_LR(L_inner, R_inner))
+
+        # Outer boundary: offset by additional margin
+        L_outer, R_outer = _offset_polyline(path_xy, half_top + m)
+        outer_ring = _ensure_ccw(_ring_from_LR(L_outer, R_outer))
+
+        # Triangulate the annular region (leaves hole open)
+        combined_xy, tris = _triangulate_annulus(outer_ring, inner_ring)
+
+        # Apply ground elevation to get 3D vertices
+        Vg = np.array([[x, y, gfun(x, y)] for (x, y) in combined_xy], float)
+
+        return {"ground_surface": (Vg, tris)}
 
 def _half_width_at_depth(half_top: float, slope: float, top_z: float, z: float) -> float:
     return max(1e-6, half_top - slope * (top_z - z))

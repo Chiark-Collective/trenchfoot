@@ -138,12 +138,18 @@ def gmsh_available() -> bool:
 def _generate_circular_path(
     center: tuple[float, float], radius: float, n_vertices: int = 32
 ) -> List[List[float]]:
-    """Generate vertices for a circular polyline approximation."""
+    """Generate vertices for a closed circular polyline.
+
+    The path is explicitly closed by repeating the first point at the end.
+    This ensures proper handling as a closed loop in mesh generation.
+    """
     import math
     cx, cy = center
-    # Create nearly-closed circle (small gap to work with existing polyline logic)
     angles = [2 * math.pi * i / n_vertices for i in range(n_vertices)]
-    return [[cx + radius * math.cos(a), cy + radius * math.sin(a)] for a in angles]
+    points = [[cx + radius * math.cos(a), cy + radius * math.sin(a)] for a in angles]
+    # Close the path by repeating the first point
+    points.append(points[0].copy())
+    return points
 
 
 def default_scenarios() -> List[ScenarioDefinition]:
