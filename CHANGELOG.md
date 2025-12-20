@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.2] - 2025-12-20
+
+### Fixed
+- **Closed path handling for S07 circular well**: Explicitly close the circular path by repeating the first point. The previous heuristic was incorrectly detecting L-shaped and U-shaped paths as closed.
+- **Volumetric meshing for closed paths**: Added proper annular geometry support to the gmsh mesher for closed circular paths with outer and inner walls.
+
 ## [0.2.1] - 2025-12-20
 
 ### Fixed
