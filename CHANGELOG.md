@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.4] - 2025-12-24
+
+### Added
+- **Ground end caps**: For open-path trenches, the ground surface now extends past the trench endpoints with semicircular caps, providing a buffer of ground at each end instead of terminating abruptly.
+
 ## [0.2.3] - 2025-12-20
 
 ### Fixed
