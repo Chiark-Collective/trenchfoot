@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.7] - 2025-12-24
+
+### Fixed
+- **Ground end fill**: Fixed gaps at trench ends by only extending the outer ring (ground boundary) while keeping the inner ring (trench opening) at its original position. The arc-length triangulation now correctly fills the end areas with ground geometry.
+
 ## [0.2.6] - 2025-12-24
 
 ### Fixed

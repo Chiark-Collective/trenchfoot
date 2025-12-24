@@ -577,6 +577,7 @@ def _extend_polyline_ends(
 
     return L_ext, R_ext
 
+
 def make_trench_from_path_sloped(path_xy: List[Tuple[float,float]], width_top: float, depth: float, wall_slope: float, ground) -> Tuple[Dict,str,str,dict]:
     # Build top and bottom rings by offsetting centerline
     half_top = width_top/2.0
@@ -823,17 +824,16 @@ def make_ground_surface_plane(path_xy: List[Tuple[float,float]], width_top: floa
 
         return {"ground_surface": (Vg, tris)}
     else:
-        # Open paths: ground forms annulus with flat extensions past trench endpoints
-        # Both inner and outer rings are extended by the margin distance to create
-        # ground buffer at trench ends. Using the same extension for both ensures
-        # the rings have matching topology for proper triangulation.
+        # Open paths: ground forms annulus with extensions past trench endpoints.
+        # The outer ring (ground boundary) is extended, but the inner ring (trench
+        # opening) stays at its original position. This creates ground fill at the
+        # trench ends rather than extending the trench opening itself.
 
-        # Inner boundary: trench opening, extended at ends
+        # Inner boundary: trench opening at original position (not extended)
         L_inner, R_inner = _offset_polyline(path_xy, half_top)
-        L_inner_ext, R_inner_ext = _extend_polyline_ends(L_inner, R_inner, path_xy, m)
-        inner_ring = _ensure_ccw(_ring_from_LR(L_inner_ext, R_inner_ext))
+        inner_ring = _ensure_ccw(_ring_from_LR(L_inner, R_inner))
 
-        # Outer boundary: offset by margin, also extended at ends
+        # Outer boundary: offset by margin, extended at ends
         L_outer, R_outer = _offset_polyline(path_xy, half_top + m)
         L_outer_ext, R_outer_ext = _extend_polyline_ends(L_outer, R_outer, path_xy, m)
         outer_ring = _ensure_ccw(_ring_from_LR(L_outer_ext, R_outer_ext))
