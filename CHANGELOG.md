@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.6] - 2025-12-24
+
+### Fixed
+- **Ground end extensions**: Replaced semicircular end caps with flat rectangular extensions. Both inner and outer rings are now extended identically, ensuring proper triangulation for L-shaped, U-shaped, and other complex trench paths.
+
 ## [0.2.5] - 2025-12-24
 
 ### Fixed
