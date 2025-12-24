@@ -1,9 +1,9 @@
 {
   "out_root": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios",
   "preview_enabled": true,
-  "volumetric_requested": true,
-  "volumetric_available": true,
-  "mesh_characteristic_length": 0.4,
+  "volumetric_requested": false,
+  "volumetric_available": false,
+  "mesh_characteristic_length": 0.3,
   "scenarios": [
     {
       "name": "S01_straight_vwalls",
@@ -25,8 +25,8 @@
       "footprint_top": 5.0,
       "footprint_bottom": 5.0,
       "trench_from_surface": -1.0,
-      "volumetric_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S01_straight_vwalls/volumetric/trench_volume.msh",
-      "volumetric_lc": 0.4,
+      "volumetric_path": null,
+      "volumetric_lc": null,
       "volumetric_error": null,
       "pipe_clearances": []
     },
@@ -50,31 +50,10 @@
       "footprint_top": 7.199999999999999,
       "footprint_bottom": 5.039999999999999,
       "trench_from_surface": -2.484000000000001,
-      "volumetric_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S02_straight_slope_pipe/volumetric/trench_volume.msh",
-      "volumetric_lc": 0.4,
+      "volumetric_path": null,
+      "volumetric_lc": null,
       "volumetric_error": null,
-      "pipe_clearances": [
-        {
-          "pipe_index": 0,
-          "radius": 0.15,
-          "length": 5.5938,
-          "s_center": 0.5,
-          "axis_margin_poly": 0.0,
-          "axis_margin_lat": 306897.2031,
-          "axis_margin_path": 0.0,
-          "lateral_gap": 0.36,
-          "lateral_margin": 0.3069,
-          "min_margin": 0.0,
-          "clearance": 0.0531,
-          "warn_threshold": 0.02655,
-          "clearance_scale": 1.0,
-          "center_xy": [
-            3.0,
-            0.0
-          ],
-          "offset_u": 0.0
-        }
-      ]
+      "pipe_clearances": []
     },
     {
       "name": "S03_L_slope_two_pipes_box",
@@ -96,51 +75,10 @@
       "footprint_top": 11.999999999999995,
       "footprint_bottom": 8.700070386125077,
       "trench_from_surface": -5.0179228990454625,
-      "volumetric_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S03_L_slope_two_pipes_box/volumetric/trench_volume.msh",
-      "volumetric_lc": 0.4,
+      "volumetric_path": null,
+      "volumetric_lc": null,
       "volumetric_error": null,
-      "pipe_clearances": [
-        {
-          "pipe_index": 0,
-          "radius": 0.15,
-          "length": 5.794099999999999,
-          "s_center": 0.35,
-          "axis_margin_poly": 0.0,
-          "axis_margin_lat": 307047.10295000003,
-          "axis_margin_path": 0.40000000000000036,
-          "lateral_gap": 0.36,
-          "lateral_margin": 0.30705,
-          "min_margin": 0.0,
-          "clearance": 0.05295,
-          "warn_threshold": 0.026475,
-          "clearance_scale": 1.0,
-          "center_xy": [
-            3.5,
-            0.0
-          ],
-          "offset_u": 0.0
-        },
-        {
-          "pipe_index": 1,
-          "radius": 0.1,
-          "length": 0.4999999999999989,
-          "s_center": 0.75,
-          "axis_margin_poly": 0.0,
-          "axis_margin_lat": 0.11750000000000049,
-          "axis_margin_path": 2349999.75,
-          "lateral_gap": 0.21749999999999994,
-          "lateral_margin": 0.16749999999999993,
-          "min_margin": 0.0,
-          "clearance": 0.05,
-          "warn_threshold": 0.025,
-          "clearance_scale": 1.0,
-          "center_xy": [
-            5.8,
-            1.5
-          ],
-          "offset_u": 0.2
-        }
-      ]
+      "pipe_clearances": []
     },
     {
       "name": "S04_U_slope_multi_noise",
@@ -162,71 +100,10 @@
       "footprint_top": 22.400000000000006,
       "footprint_bottom": 12.80127074424757,
       "trench_from_surface": -11.011702905355754,
-      "volumetric_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S04_U_slope_multi_noise/volumetric/trench_volume.msh",
-      "volumetric_lc": 0.4,
+      "volumetric_path": null,
+      "volumetric_lc": null,
       "volumetric_error": null,
-      "pipe_clearances": [
-        {
-          "pipe_index": 0,
-          "radius": 0.18,
-          "length": 4.9122,
-          "s_center": 0.25,
-          "axis_margin_poly": 0.0,
-          "axis_margin_lat": 306097.54389999993,
-          "axis_margin_path": 1.2999999999999998,
-          "lateral_gap": 0.36999999999999994,
-          "lateral_margin": 0.3060999999999999,
-          "min_margin": 0.0,
-          "clearance": 0.0639,
-          "warn_threshold": 0.03195,
-          "clearance_scale": 1.0,
-          "center_xy": [
-            4.0,
-            0.0
-          ],
-          "offset_u": 0.0
-        },
-        {
-          "pipe_index": 1,
-          "radius": 0.1,
-          "length": 1.0960155108391487,
-          "s_center": 0.55,
-          "axis_margin_poly": 0.009099025766972968,
-          "axis_margin_lat": 0.0,
-          "axis_margin_path": 9.422197859310744,
-          "lateral_gap": 0.23749999999999996,
-          "lateral_margin": 0.18749999999999994,
-          "min_margin": 0.0,
-          "clearance": 0.05,
-          "warn_threshold": 0.025,
-          "clearance_scale": 1.0,
-          "center_xy": [
-            6.2,
-            2.8000000000000007
-          ],
-          "offset_u": -0.2
-        },
-        {
-          "pipe_index": 2,
-          "radius": 0.08,
-          "length": 0.7792304845413269,
-          "s_center": 0.75,
-          "axis_margin_poly": 0.0,
-          "axis_margin_lat": 0.03762395692965953,
-          "axis_margin_path": 7.350384757729335,
-          "lateral_gap": 0.16999999999999993,
-          "lateral_margin": 0.11999999999999993,
-          "min_margin": 0.0,
-          "clearance": 0.05,
-          "warn_threshold": 0.025,
-          "clearance_scale": 1.0,
-          "center_xy": [
-            4.0,
-            3.75
-          ],
-          "offset_u": 0.25
-        }
-      ]
+      "pipe_clearances": []
     },
     {
       "name": "S05_wide_slope_pair",
@@ -248,51 +125,10 @@
       "footprint_top": 28.808998594189276,
       "footprint_bottom": 27.46494373197848,
       "trench_from_surface": -6.858764294895576,
-      "volumetric_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S05_wide_slope_pair/volumetric/trench_volume.msh",
-      "volumetric_lc": 0.4,
+      "volumetric_path": null,
+      "volumetric_lc": null,
       "volumetric_error": null,
-      "pipe_clearances": [
-        {
-          "pipe_index": 0,
-          "radius": 0.2,
-          "length": 5.5,
-          "s_center": 0.35,
-          "axis_margin_poly": 1.2515037699201281,
-          "axis_margin_lat": 2.443115482787669,
-          "axis_margin_path": 1.2474421281299537,
-          "lateral_gap": 0.6650630399999999,
-          "lateral_margin": 0.6017750399999999,
-          "min_margin": 0.6017750399999999,
-          "clearance": 0.063288,
-          "warn_threshold": 0.031644,
-          "clearance_scale": 0.9,
-          "center_xy": [
-            4.199999999999999,
-            0.3
-          ],
-          "offset_u": 0.3
-        },
-        {
-          "pipe_index": 1,
-          "radius": 0.16,
-          "length": 3.2832310494763,
-          "s_center": 0.7,
-          "axis_margin_poly": 0.0,
-          "axis_margin_lat": 1.9897591587891337,
-          "axis_margin_path": 1.8556699893868722,
-          "lateral_gap": 0.601750528,
-          "lateral_margin": 0.539868928,
-          "min_margin": 0.0,
-          "clearance": 0.061881599999999995,
-          "warn_threshold": 0.030940799999999997,
-          "clearance_scale": 1.1,
-          "center_xy": [
-            8.399999999999999,
-            -0.4
-          ],
-          "offset_u": -0.4
-        }
-      ]
+      "pipe_clearances": []
     },
     {
       "name": "S06_bumpy_wide_loop",
@@ -314,51 +150,10 @@
       "footprint_top": 61.10535782948724,
       "footprint_bottom": 56.3121473979779,
       "trench_from_surface": -17.122161702529255,
-      "volumetric_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S06_bumpy_wide_loop/volumetric/trench_volume.msh",
-      "volumetric_lc": 0.4,
+      "volumetric_path": null,
+      "volumetric_lc": null,
       "volumetric_error": null,
-      "pipe_clearances": [
-        {
-          "pipe_index": 0,
-          "radius": 0.18,
-          "length": 3.4303356192892736,
-          "s_center": 0.3,
-          "axis_margin_poly": 0.9180874031301758,
-          "axis_margin_lat": 0.0,
-          "axis_margin_path": 6.590034660321056,
-          "lateral_gap": 0.69721184,
-          "lateral_margin": 0.63377984,
-          "min_margin": 0.0,
-          "clearance": 0.063432,
-          "warn_threshold": 0.031716,
-          "clearance_scale": 1.0,
-          "center_xy": [
-            6.751372594742942,
-            0.04861489092728094
-          ],
-          "offset_u": 0.35
-        },
-        {
-          "pipe_index": 1,
-          "radius": 0.14,
-          "length": 2.2797305056626995,
-          "s_center": 0.6,
-          "axis_margin_poly": 0.0,
-          "axis_margin_lat": 0.4740426451536417,
-          "axis_margin_path": 10.8869053322154,
-          "lateral_gap": 0.6299,
-          "lateral_margin": 0.5874,
-          "min_margin": 0.0,
-          "clearance": 0.0425,
-          "warn_threshold": 0.02125,
-          "clearance_scale": 0.85,
-          "center_xy": [
-            7.152900088222557,
-            5.45
-          ],
-          "offset_u": -0.45
-        }
-      ]
+      "pipe_clearances": []
     },
     {
       "name": "S07_circular_well",
@@ -377,94 +172,13 @@
         "boxes": 0,
         "spheres": 1
       },
-      "footprint_top": 22.05640516225481,
-      "footprint_bottom": 18.82403650828919,
-      "trench_from_surface": -47.27542533827233,
-      "volumetric_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S07_circular_well/volumetric/trench_volume.msh",
-      "volumetric_lc": 0.4,
+      "footprint_top": 22.056405162254812,
+      "footprint_bottom": 18.826708706545926,
+      "trench_from_surface": -19.832030917053125,
+      "volumetric_path": null,
+      "volumetric_lc": null,
       "volumetric_error": null,
-      "pipe_clearances": [
-        {
-          "pipe_index": 0,
-          "radius": 0.2,
-          "length": 4.0,
-          "s_center": 0.25,
-          "axis_margin_poly": null,
-          "axis_margin_lat": 704798.0,
-          "axis_margin_path": 0.08221136790945316,
-          "lateral_gap": 0.7749999999999999,
-          "lateral_margin": 0.7047999999999999,
-          "min_margin": 0.08221136790945316,
-          "clearance": 0.0702,
-          "warn_threshold": 0.0351,
-          "clearance_scale": 1.0,
-          "center_xy": [
-            1.0340313980557629e-15,
-            1.4999999999999998
-          ],
-          "offset_u": 0.0
-        },
-        {
-          "pipe_index": 1,
-          "radius": 0.15,
-          "length": 2.085540740431603,
-          "s_center": 0.5,
-          "axis_margin_poly": null,
-          "axis_margin_lat": 0.0,
-          "axis_margin_path": 5.324263372925678,
-          "lateral_gap": 0.69,
-          "lateral_margin": 0.63735,
-          "min_margin": 0.0,
-          "clearance": 0.052649999999999995,
-          "warn_threshold": 0.026324999999999998,
-          "clearance_scale": 1.0,
-          "center_xy": [
-            -1.4004815273327802,
-            -0.009801714032953731
-          ],
-          "offset_u": 0.1
-        },
-        {
-          "pipe_index": 2,
-          "radius": 0.1,
-          "length": 1.7551448183364624,
-          "s_center": 0.75,
-          "axis_margin_poly": null,
-          "axis_margin_lat": 0.0,
-          "axis_margin_path": 3.5272503266506745,
-          "lateral_gap": 0.66,
-          "lateral_margin": 0.61,
-          "min_margin": 0.0,
-          "clearance": 0.05,
-          "warn_threshold": 0.025,
-          "clearance_scale": 1.0,
-          "center_xy": [
-            -0.01470257104943662,
-            -1.6492777090008293
-          ],
-          "offset_u": -0.15
-        },
-        {
-          "pipe_index": 3,
-          "radius": 0.12,
-          "length": 1.44,
-          "s_center": 0.0,
-          "axis_margin_poly": null,
-          "axis_margin_lat": 0.0,
-          "axis_margin_path": null,
-          "lateral_gap": 0.77,
-          "lateral_margin": 0.72,
-          "min_margin": 0.0,
-          "clearance": 0.05,
-          "warn_threshold": 0.025,
-          "clearance_scale": 1.0,
-          "center_xy": [
-            1.5,
-            0.0
-          ],
-          "offset_u": 0.0
-        }
-      ]
+      "pipe_clearances": []
     }
   ]
 }

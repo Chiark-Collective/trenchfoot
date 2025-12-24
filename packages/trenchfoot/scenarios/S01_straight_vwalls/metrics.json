@@ -3,7 +3,7 @@
     "trench_bottom": 5.0,
     "trench_cap_for_volume": 5.0,
     "trench_walls": 7.2,
-    "ground_surface": 10.0
+    "ground_surface": 26.25090034635143
   },
   "closed_surface_sets": {
     "trench_closed_groups": [
