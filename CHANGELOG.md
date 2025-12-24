@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.5] - 2025-12-24
+
+### Fixed
+- **Ground end caps geometry**: Fixed semicircular end caps that were incorrectly offset along the tangent, causing them to overlap the trench opening. Caps are now properly centered at path endpoints.
+
 ## [0.2.4] - 2025-12-24
 
 ### Added
