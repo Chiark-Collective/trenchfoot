@@ -550,42 +550,34 @@ def _ring_from_LR(L: List[np.ndarray], R: List[np.ndarray]) -> np.ndarray:
 
 def _ring_from_LR_with_end_caps(
     L: List[np.ndarray], R: List[np.ndarray],
-    path_xy: List[Tuple[float, float]], end_extension: float, n_cap_points: int = 5
+    path_xy: List[Tuple[float, float]], n_cap_points: int = 5
 ) -> np.ndarray:
     """Create a ring from L/R offsets with semicircular end caps.
 
-    Extends the outer boundary past the path endpoints to create ground buffer
-    at the ends of open trenches.
+    The caps are semicircles centered at the path endpoints, with radius equal
+    to the offset distance. This creates a "stadium" (discorectangle) shape that
+    extends past the trench endpoints to provide ground buffer.
     """
     P = np.array(path_xy, float)
 
-    # Get tangent directions at endpoints
-    t_start = _normalize(P[1] - P[0])
-    t_end = _normalize(P[-1] - P[-2])
-
-    # Start cap: semicircle from R[0] around to L[0], extending in -t_start direction
-    # Center of cap is at path start, offset backward by end_extension
-    cap_center_start = P[0] - end_extension * t_start
-    # Radius is distance from center to L[0] or R[0]
+    # Start cap: semicircle from R[0] around to L[0], centered at path start
+    cap_center_start = P[0]
     radius_start = np.linalg.norm(np.array(L[0]) - cap_center_start)
 
-    # Generate semicircle points from R[0] to L[0] going around the back
-    # R[0] is at angle theta_r, L[0] is at angle theta_l
-    # We go from theta_r counterclockwise to theta_l (the long way around the back)
     vec_r = np.array(R[0]) - cap_center_start
     vec_l = np.array(L[0]) - cap_center_start
     theta_r = np.arctan2(vec_r[1], vec_r[0])
     theta_l = np.arctan2(vec_l[1], vec_l[0])
 
-    # Ensure we go the "back" way (counterclockwise from R to L)
+    # Go around the back (away from trench direction) from R[0] to L[0]
     if theta_l > theta_r:
         theta_l -= 2 * np.pi
 
-    angles_start = np.linspace(theta_r, theta_l, n_cap_points + 2)[1:-1]  # Exclude endpoints (already have R[0], L[0])
+    angles_start = np.linspace(theta_r, theta_l, n_cap_points + 2)[1:-1]
     cap_start = [cap_center_start + radius_start * np.array([np.cos(a), np.sin(a)]) for a in angles_start]
 
-    # End cap: semicircle from L[-1] around to R[-1], extending in +t_end direction
-    cap_center_end = P[-1] + end_extension * t_end
+    # End cap: semicircle from L[-1] around to R[-1], centered at path end
+    cap_center_end = P[-1]
     radius_end = np.linalg.norm(np.array(L[-1]) - cap_center_end)
 
     vec_l_end = np.array(L[-1]) - cap_center_end
@@ -593,7 +585,7 @@ def _ring_from_LR_with_end_caps(
     theta_l_end = np.arctan2(vec_l_end[1], vec_l_end[0])
     theta_r_end = np.arctan2(vec_r_end[1], vec_r_end[0])
 
-    # Go counterclockwise from L[-1] to R[-1] (the back way)
+    # Go around the back from L[-1] to R[-1]
     if theta_r_end > theta_l_end:
         theta_r_end -= 2 * np.pi
 
@@ -859,7 +851,7 @@ def make_ground_surface_plane(path_xy: List[Tuple[float,float]], width_top: floa
         # Outer boundary: offset by additional margin, with semicircular end caps
         L_outer, R_outer = _offset_polyline(path_xy, half_top + m)
         outer_ring = _ensure_ccw(_ring_from_LR_with_end_caps(
-            L_outer, R_outer, path_xy, end_extension=m
+            L_outer, R_outer, path_xy
         ))
 
         # Triangulate the annular region (leaves hole open)
