@@ -425,6 +425,7 @@ class SurfaceMeshFiles:
     obj_path: Path
     metrics_path: Path
     preview_paths: Tuple[Path, ...]
+    sdf_metadata_path: Optional[Path] = None
 
 
 @dataclass
@@ -435,7 +436,73 @@ class SurfaceMeshResult:
     metrics: Dict[str, Any]
     previews: Dict[str, bytes]
 
-    def persist(self, out_dir: str | Path, *, include_previews: bool = False) -> SurfaceMeshFiles:
+    def _build_sdf_metadata(self) -> Dict[str, Any]:
+        """Build SDF metadata for downstream consumers.
+
+        This metadata enables generic mesh-to-SDF pipelines to correctly
+        interpret the mesh geometry without trenchfoot-specific heuristics.
+        """
+        # Extract trench opening polygon from the trench cap geometry
+        trench_opening_vertices = None
+        if "trench_cap_for_volume" in self.groups:
+            V_cap, F_cap = self.groups["trench_cap_for_volume"]
+            if V_cap.size > 0:
+                # Get unique vertices at z ≈ ground level (the top cap boundary)
+                # These form the trench opening polygon
+                z_level = float(np.median(V_cap[:, 2]))
+                xy_coords = V_cap[:, :2]
+                # Use convex hull to get ordered boundary vertices
+                try:
+                    from scipy.spatial import ConvexHull
+                    hull = ConvexHull(xy_coords)
+                    boundary_indices = hull.vertices
+                    trench_opening_vertices = xy_coords[boundary_indices].tolist()
+                except ImportError:
+                    # Fallback: just use unique xy coords (unordered)
+                    trench_opening_vertices = xy_coords.tolist()
+
+        # Determine geometry type
+        is_closed = _is_path_closed(self.spec.path_xy)
+        geometry_type = "closed_well" if is_closed else "open_trench"
+
+        # Build surface group info
+        surface_groups = {}
+        for name in self.groups:
+            if name in _INTERNAL_GROUPS:
+                continue
+            if "bottom" in name:
+                surface_groups[name] = {"normal_direction": "up", "surface_type": "floor"}
+            elif "wall" in name:
+                surface_groups[name] = {"normal_direction": "inward", "surface_type": "wall"}
+            elif "ground" in name:
+                surface_groups[name] = {"normal_direction": "up", "surface_type": "ground"}
+            elif "pipe" in name:
+                surface_groups[name] = {"normal_direction": "outward", "surface_type": "embedded_object"}
+            elif "box" in name or "sphere" in name:
+                surface_groups[name] = {"normal_direction": "outward", "surface_type": "embedded_object"}
+            else:
+                surface_groups[name] = {"normal_direction": "unknown", "surface_type": "other"}
+
+        return {
+            "sdf_metadata": {
+                "version": "1.0",
+                "normal_convention": "into_void",
+                "geometry_type": geometry_type,
+                "trench_opening": {
+                    "type": "polygon",
+                    "vertices_xy": trench_opening_vertices,
+                    "z_level": self.spec.ground.z0 if self.spec.ground else 0.0,
+                },
+                "surface_groups": surface_groups,
+                "embedded_objects": {
+                    "pipes": self.object_counts.get("pipes", 0),
+                    "boxes": self.object_counts.get("boxes", 0),
+                    "spheres": self.object_counts.get("spheres", 0),
+                },
+            }
+        }
+
+    def persist(self, out_dir: str | Path, *, include_previews: bool = False, include_sdf_metadata: bool = True) -> SurfaceMeshFiles:
         out_path = Path(out_dir)
         out_path.mkdir(parents=True, exist_ok=True)
         obj_path = out_path / "trench_scene.obj"
@@ -445,13 +512,27 @@ class SurfaceMeshResult:
         metrics_path = out_path / "metrics.json"
         with metrics_path.open("w") as fh:
             json.dump(self.metrics, fh, indent=2)
+
+        # Export SDF metadata
+        sdf_metadata_path = None
+        if include_sdf_metadata:
+            sdf_metadata = self._build_sdf_metadata()
+            sdf_metadata_path = out_path / "sdf_metadata.json"
+            with sdf_metadata_path.open("w") as fh:
+                json.dump(sdf_metadata, fh, indent=2)
+
         preview_paths: List[Path] = []
         if include_previews and self.previews:
             for name, data in self.previews.items():
                 target = out_path / f"preview_{name}.png"
                 target.write_bytes(data)
                 preview_paths.append(target)
-        return SurfaceMeshFiles(obj_path=obj_path, metrics_path=metrics_path, preview_paths=tuple(preview_paths))
+        return SurfaceMeshFiles(
+            obj_path=obj_path,
+            metrics_path=metrics_path,
+            preview_paths=tuple(preview_paths),
+            sdf_metadata_path=sdf_metadata_path,
+        )
 
 def _ground_fn(g: GroundSpec):
     sx, sy = g.slope
@@ -620,7 +701,8 @@ def make_trench_from_path_sloped(path_xy: List[Tuple[float,float]], width_top: f
 
         bot_verts, bot_faces = _triangulate_annulus(outer_bot, inner_bot[::-1])
         V_bottom = np.column_stack([bot_verts, np.concatenate([z_outer_bot, z_inner_bot[::-1]])])
-        F_bottom = bot_faces[:, ::-1]  # flip for outward normals
+        # Floor normals point UP (+z) into the trench void for correct SDF sign
+        F_bottom = _ensure_upward_normals(V_bottom, bot_faces)
 
         # Outer wall: connects outer_top to outer_bot (facing outward from trench)
         n_outer = len(outer_top)
@@ -680,7 +762,8 @@ def make_trench_from_path_sloped(path_xy: List[Tuple[float,float]], width_top: f
         V_cap = np.column_stack([poly_top, z_top])
         V_bottom = np.column_stack([poly_bot, z_bot])
         F_cap = tris_top
-        F_bottom = tris_bot[:, ::-1]  # outward
+        # Floor normals point UP (+z) into the trench void for correct SDF sign
+        F_bottom = _ensure_upward_normals(V_bottom, tris_bot)
 
         # Walls: connect corresponding indices
         N = len(poly_top)
@@ -714,6 +797,38 @@ def make_trench_from_path_sloped(path_xy: List[Tuple[float,float]], width_top: f
     }
 
     return groups, poly_top, poly_bot, extra
+
+def _ensure_upward_normals(V: np.ndarray, F: np.ndarray) -> np.ndarray:
+    """Ensure all faces have upward-pointing normals (+z).
+
+    For horizontal surfaces like trench floors, normals should point UP
+    into the void for correct SDF computation. This function flips any
+    faces with downward-pointing normals.
+
+    Parameters
+    ----------
+    V : np.ndarray
+        Vertices (n, 3)
+    F : np.ndarray
+        Faces (m, 3) - indices into V
+
+    Returns
+    -------
+    np.ndarray
+        Faces with consistent upward normals (may have winding flipped)
+    """
+    F_out = F.copy()
+    p0 = V[F[:, 0]]
+    p1 = V[F[:, 1]]
+    p2 = V[F[:, 2]]
+    normals = np.cross(p1 - p0, p2 - p0)
+
+    # Flip faces with negative z-component normals
+    down_mask = normals[:, 2] < 0
+    F_out[down_mask] = F_out[down_mask, ::-1]
+
+    return F_out
+
 
 def _triangulate_annulus(outer: np.ndarray, inner: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """Triangulate the annular region between outer and inner polygons.
@@ -822,6 +937,9 @@ def make_ground_surface_plane(path_xy: List[Tuple[float,float]], width_top: floa
         combined_xy, tris = _triangulate_annulus(ground_outer, trench_outer)
         Vg = np.array([[x, y, gfun(x, y)] for (x, y) in combined_xy], float)
 
+        # Ground normals should point UP (+z) into the air
+        tris = _ensure_upward_normals(Vg, tris)
+
         return {"ground_surface": (Vg, tris)}
     else:
         # Open paths: ground forms annulus with extensions past trench endpoints.
@@ -843,6 +961,9 @@ def make_ground_surface_plane(path_xy: List[Tuple[float,float]], width_top: floa
 
         # Apply ground elevation to get 3D vertices
         Vg = np.array([[x, y, gfun(x, y)] for (x, y) in combined_xy], float)
+
+        # Ground normals should point UP (+z) into the air
+        tris = _ensure_upward_normals(Vg, tris)
 
         return {"ground_surface": (Vg, tris)}
 

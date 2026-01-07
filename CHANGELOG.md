@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.3.0] - 2026-01-07
+
+### Added
+- **SDF metadata export**: Each scenario now exports `sdf_metadata.json` alongside the OBJ mesh, containing:
+  - Normal convention ("into_void")
+  - Geometry type ("open_trench")
+  - Trench opening polygon with z-level
+  - Surface group annotations (floor, walls, ground)
+  - Embedded object counts
+- **SDF readiness tests**: 21 new tests in `tests/test_sdf_readiness.py` validating:
+  - Floor normals point up (+z)
+  - Wall normals point inward toward trench centerline
+  - Ground surface normals point up (+z)
+  - Metadata consistency with mesh geometry
+
+### Fixed
+- **Normal orientation consistency**: All floor and ground surfaces now have upward-pointing normals (+z). Previously, some faces (particularly on S07 circular well ground surface) had incorrect winding order causing downward normals, which broke SDF sign computation in downstream consumers.
+- **`_ensure_upward_normals()` post-processing**: Added helper function that flips face winding order for any horizontal faces with downward normals, applied to all ground surface generation paths.
+
 ## [0.2.7] - 2025-12-24
 
 ### Fixed
