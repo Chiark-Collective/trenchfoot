@@ -1,0 +1,37 @@
+{
+  "sdf_metadata": {
+    "version": "2.0",
+    "normal_convention": "into_void",
+    "geometry_type": "open_trench",
+    "trench_opening": {
+      "type": "polygon",
+      "vertices_xy": [
+        [
+          0.0,
+          1.2
+        ],
+        [
+          7.8,
+          0.0
+        ],
+        [
+          7.8,
+          3.0
+        ],
+        [
+          10.2,
+          3.0
+        ],
+        [
+          10.2,
+          0.0
+        ],
+        [
+          0.0,
+          -1.2
+        ]
+      ],
+      "z_level": 0.0
+    }
+  }
+}
