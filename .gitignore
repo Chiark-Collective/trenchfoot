@@ -1,0 +1,6 @@
+
+# Secrets
+.env
+*.env
+.pypi_token.env
+.github_token.env
