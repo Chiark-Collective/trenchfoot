@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.1] - 2026-01-08
+
+### Added
+- **Pre-generated `sdf_metadata.json` files**: All 7 scenarios now include static `sdf_metadata.json` files with version 2.0, enabling the HybridTrenchSDF pipeline in survi without regeneration.
+- **Ground truth isosurface visualizations**: Each scenario includes `isosurface_truth.html` showing the mesh isosurface for visual verification.
+
 ## [0.3.0] - 2026-01-07
 
 ### Added
