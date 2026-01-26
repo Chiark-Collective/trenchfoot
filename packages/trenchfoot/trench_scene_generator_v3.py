@@ -34,7 +34,7 @@ except Exception:
     Poly3DCollection = None
 
 # Groups kept for internal metrics but excluded from OBJ export and previews
-_INTERNAL_GROUPS = frozenset({"trench_cap_for_volume"})
+_INTERNAL_GROUPS = frozenset({"trench_cap_for_volume", "inner_column_lid"})
 
 # ---------------- Geometry helpers ----------------
 
@@ -123,6 +123,9 @@ def _offset_closed_polyline(path: List[Tuple[float,float]], offset: float) -> Li
     this returns a single continuous closed ring for paths where first ≈ last point.
     """
     P = np.array(path, float)
+    # Remove duplicate closing point if present (first ≈ last)
+    if len(P) > 1 and np.linalg.norm(P[0] - P[-1]) < 0.01:
+        P = P[:-1]
     n = len(P)
     if n < 3:
         raise ValueError("Closed polyline needs at least 3 points")
@@ -405,6 +408,7 @@ class GroundSpec:
     z0: float = 0.0
     slope: Tuple[float,float] = (0.0, 0.0)   # (dz/dx, dz/dy)
     size_margin: float = 3.0
+    fill_interior: bool = False  # For closed paths: fill the interior with ground surface
 
 @dataclass
 class SceneSpec:
@@ -735,6 +739,16 @@ def make_trench_from_path_sloped(path_xy: List[Tuple[float,float]], width_top: f
         V_walls = np.array(walls_V, float)
         F_walls = np.array(walls_F, int)
 
+        # Inner column lid: cap the top of the inner column at ground level
+        # Reverse inner_top to get CCW winding for upward-facing normals
+        inner_top_ccw = inner_top[::-1].copy()
+        z_inner_top_ccw = z_inner_top[::-1].copy()
+        lid_xy, lid_faces = _triangulate_polygon_fan(inner_top_ccw)
+        # Assign z-values: polygon vertices use z_inner_top_ccw, centroid uses average
+        z_lid = np.concatenate([z_inner_top_ccw, [np.mean(z_inner_top_ccw)]])
+        V_lid = np.column_stack([lid_xy, z_lid])
+        F_lid = _ensure_upward_normals(V_lid, lid_faces)
+
         # For closed path, poly_top is the outer ring (used for ground plane hole)
         poly_top = outer_top
         poly_bot = outer_bot
@@ -796,6 +810,10 @@ def make_trench_from_path_sloped(path_xy: List[Tuple[float,float]], width_top: f
         "trench_walls": (V_walls, F_walls)
     }
 
+    # Add inner column lid for closed paths
+    if is_closed:
+        groups["inner_column_lid"] = (V_lid, F_lid)
+
     return groups, poly_top, poly_bot, extra
 
 def _ensure_upward_normals(V: np.ndarray, F: np.ndarray) -> np.ndarray:
@@ -828,6 +846,28 @@ def _ensure_upward_normals(V: np.ndarray, F: np.ndarray) -> np.ndarray:
     F_out[down_mask] = F_out[down_mask, ::-1]
 
     return F_out
+
+
+def _triangulate_polygon_fan(polygon: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Triangulate a simple polygon using fan triangulation from centroid.
+
+    Works well for convex or nearly-convex polygons. Returns (vertices, faces)
+    where vertices includes the original polygon points plus the centroid.
+    """
+    n = len(polygon)
+    centroid = polygon.mean(axis=0)
+
+    # Vertices: polygon points first, then centroid at the end
+    verts = np.vstack([polygon, centroid.reshape(1, -1)])
+    centroid_idx = n
+
+    # Fan triangles from centroid to each edge
+    tris = []
+    for i in range(n):
+        j = (i + 1) % n
+        tris.append([centroid_idx, i, j])
+
+    return verts, np.array(tris, dtype=int)
 
 
 def _triangulate_annulus(outer: np.ndarray, inner: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -919,9 +959,8 @@ def make_ground_surface_plane(path_xy: List[Tuple[float,float]], width_top: floa
     is_closed = _is_path_closed(path_xy)
 
     if is_closed:
-        # For closed paths (like circular wells), the ground is an annulus
-        # from the outer ground boundary to the outer edge of the trench opening.
-        # The center (inside the trench) is left completely open.
+        # For closed paths, ground is an annulus from outer boundary to trench edge.
+        # Optionally, if fill_interior is set, also fill the interior island.
 
         # Trench outer boundary (edge of trench opening)
         trench_outer = np.array(_offset_closed_polyline(path_xy, half_top), float)
@@ -933,14 +972,23 @@ def make_ground_surface_plane(path_xy: List[Tuple[float,float]], width_top: floa
         trench_outer = _ensure_ccw(trench_outer)
         ground_outer = _ensure_ccw(ground_outer)
 
-        # Ground annulus: from ground_outer to trench_outer
-        combined_xy, tris = _triangulate_annulus(ground_outer, trench_outer)
-        Vg = np.array([[x, y, gfun(x, y)] for (x, y) in combined_xy], float)
+        # Outer ground annulus: from ground_outer to trench_outer
+        outer_xy, outer_tris = _triangulate_annulus(ground_outer, trench_outer)
+        Vg_outer = np.array([[x, y, gfun(x, y)] for (x, y) in outer_xy], float)
+        outer_tris = _ensure_upward_normals(Vg_outer, outer_tris)
 
-        # Ground normals should point UP (+z) into the air
-        tris = _ensure_upward_normals(Vg, tris)
+        result = {"ground_surface": (Vg_outer, outer_tris)}
 
-        return {"ground_surface": (Vg, tris)}
+        # Optionally fill the interior island (for loop trenches, not wells/pits)
+        if getattr(ground, 'fill_interior', False):
+            trench_inner = np.array(_offset_closed_polyline(path_xy, -half_top), float)
+            trench_inner = _ensure_ccw(trench_inner)
+            inner_xy, inner_tris = _triangulate_polygon_fan(trench_inner)
+            Vg_inner = np.array([[x, y, gfun(x, y)] for (x, y) in inner_xy], float)
+            inner_tris = _ensure_upward_normals(Vg_inner, inner_tris)
+            result["ground_island"] = (Vg_inner, inner_tris)
+
+        return result
     else:
         # Open paths: ground forms annulus with extensions past trench endpoints.
         # The outer ring (ground boundary) is extended, but the inner ring (trench

@@ -223,9 +223,9 @@ def default_scenarios() -> List[ScenarioDefinition]:
                 ],
                 "boxes": [
                     {
-                        "along": 0.8,
-                        "across": 0.5,
-                        "height": 0.4,
+                        "along": 0.4,
+                        "across": 0.3,
+                        "height": 0.25,
                         "s": 0.55,
                         "offset_u": 0.0,
                     }
@@ -266,7 +266,7 @@ def default_scenarios() -> List[ScenarioDefinition]:
                         "angle_deg": 45,
                         "s_center": 0.55,
                         "z": -0.65,
-                        "offset_u": -0.2,
+                        "offset_u": -0.4,
                     },
                     {
                         "radius": 0.08,
@@ -304,7 +304,7 @@ def default_scenarios() -> List[ScenarioDefinition]:
                         "radius": 0.2,
                         "length": 5.5,
                         "angle_deg": 10,
-                        "s_center": 0.35,
+                        "s_center": 0.2,
                         "z": -0.4,
                         "offset_u": 0.3,
                         "clearance_scale": 0.9,
@@ -324,8 +324,8 @@ def default_scenarios() -> List[ScenarioDefinition]:
                         "along": 1.2,
                         "across": 0.9,
                         "height": 0.35,
-                        "s": 0.55,
-                        "offset_u": -0.25,
+                        "s": 0.45,
+                        "offset_u": -0.4,
                         "z": -0.35,
                     }
                 ],
@@ -344,12 +344,12 @@ def default_scenarios() -> List[ScenarioDefinition]:
         ScenarioDefinition(
             "S06_bumpy_wide_loop",
             {
-                "path_xy": [[0, 0], [4, -1], [8, 0], [8, 5], [2, 5], [-1, 2]],
+                "path_xy": [[0, 0], [4, -1], [8, 0], [8, 5], [2, 5], [-1, 2], [0, 0]],
                 "width": 2.6,
                 "depth": 0.85,
                 "wall_slope": 0.12,
                 "ground_margin": 2.0,
-                "ground": {"z0": 0.2, "slope": [0.015, 0.03], "size_margin": 1.8},
+                "ground": {"z0": 0.2, "slope": [0.015, 0.03], "size_margin": 1.8, "fill_interior": True},
                 "pipes": [
                     {
                         "radius": 0.18,
@@ -395,41 +395,41 @@ def default_scenarios() -> List[ScenarioDefinition]:
                 "ground_margin": 1.0,
                 "ground": {"z0": 0.0, "slope": [0.0, 0.0], "size_margin": 2.0},
                 "pipes": [
-                    # Upper pipe - large diameter, horizontal
+                    # Upper pipe - tangential
                     {
                         "radius": 0.20,
-                        "length": 4.0,
+                        "length": 8.0,
                         "angle_deg": 0,
-                        "s_center": 0.25,
+                        "s_center": 0.0,
                         "z": -0.5,
-                        "offset_u": 0.0,
+                        "offset_u": -0.4,
                     },
-                    # Middle pipe - medium, angled
+                    # Middle pipe - tangential
                     {
                         "radius": 0.15,
-                        "length": 3.5,
-                        "angle_deg": 45,
+                        "length": 7.5,
+                        "angle_deg": 0,
                         "s_center": 0.5,
                         "z": -1.2,
-                        "offset_u": 0.1,
+                        "offset_u": -0.4,
                     },
-                    # Lower pipe - small, opposite angle
+                    # Lower pipe - tangential
                     {
                         "radius": 0.10,
-                        "length": 3.0,
-                        "angle_deg": -60,
-                        "s_center": 0.75,
+                        "length": 7.0,
+                        "angle_deg": 0,
+                        "s_center": 0.25,
                         "z": -1.8,
-                        "offset_u": -0.15,
+                        "offset_u": -0.4,
                     },
-                    # Deep pipe - crossing at bottom
+                    # Deep pipe - tangential
                     {
                         "radius": 0.12,
-                        "length": 3.2,
-                        "angle_deg": 90,
-                        "s_center": 0.0,
+                        "length": 7.5,
+                        "angle_deg": 0,
+                        "s_center": 0.75,
                         "z": -2.2,
-                        "offset_u": 0.0,
+                        "offset_u": -0.4,
                     },
                 ],
                 "boxes": [],

@@ -6,6 +6,7 @@ _TRENCH_COLORS = {
     "trench_bottom": "#d2a679",
     "trench_cap_for_volume": "#e6cfa4",
     "ground_surface": "#b0b0b0",
+    "inner_column_lid": "#b0b0b0",  # same as ground
 }
 
 _PIPE_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b"]

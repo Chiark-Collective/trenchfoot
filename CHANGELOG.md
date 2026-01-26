@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.4.0] - 2026-01-26
+
+### Added
+- **Makefile**: Added `make dump-meshes`, `make dump-meshes-volumetric`, and `make clean-meshes` targets for local mesh inspection
+- **Inner column lid for circular wells**: S07 and other closed-path trenches now have a proper ground surface capping the central column
+- **`fill_interior` option for GroundSpec**: Closed-path trenches can optionally fill the interior island with ground surface (used in S06)
+- **`inner_column_lid` render color**: Gray color matching ground surface
+
+### Fixed
+- **S03 box-pipe intersection**: Reduced box size to create clearance from nearby pipe
+- **S04 diagonal pipe clipping**: Adjusted pipe offset to prevent intersection with inner corner
+- **S05 pipe-box intersection**: Moved box position and offset to avoid pipe collision
+- **S06 ground overhang at open ends**: Closed the loop path to use proper annulus triangulation
+- **S07 pipe positions**: Repositioned all pipes with tangential orientation and negative offset to avoid crossing the central opening
+- **Circular path seam artifact**: `_offset_closed_polyline` now removes duplicate closing point that caused triangular protrusion on inner walls
+- **`.gitignore`**: Added `data/` directory for generated mesh inspection
+
+### Changed
+- **S07 pipe configuration**: All pipes now tangential (angle_deg=0) with offset_u=-0.4, lengths increased to 7.0-8.0 for wall penetration
+
 ## [0.3.1] - 2026-01-08
 
 ### Added

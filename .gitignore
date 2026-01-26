@@ -4,3 +4,6 @@
 *.env
 .pypi_token.env
 .github_token.env
+
+# Generated mesh data for local inspection
+data/
