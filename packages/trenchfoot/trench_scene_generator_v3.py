@@ -198,6 +198,74 @@ def _ear_clipping_triangulation(poly_xy: np.ndarray) -> np.ndarray:
     tris.append([V[0],V[1],V[2]])
     return np.array(tris,int)
 
+
+def _extract_boundary_polygon(V: np.ndarray, F: np.ndarray) -> Optional[np.ndarray]:
+    """Extract ordered boundary polygon from a triangulated mesh.
+
+    Finds boundary edges (edges appearing in only one face) and chains
+    them together to form an ordered polygon. This correctly handles
+    non-convex shapes like L-shaped or U-shaped boundaries.
+
+    Parameters
+    ----------
+    V : np.ndarray
+        Vertices (n, 3) or (n, 2)
+    F : np.ndarray
+        Faces (m, 3) - triangle indices
+
+    Returns
+    -------
+    np.ndarray or None
+        Ordered boundary vertices XY coordinates (k, 2), or None if
+        no boundary edges found (closed mesh).
+    """
+    if F.size == 0:
+        return None
+
+    # Count edge occurrences - boundary edges appear exactly once
+    edge_count: Dict[Tuple[int, int], int] = {}
+    for face in F:
+        for i in range(3):
+            v0, v1 = int(face[i]), int(face[(i + 1) % 3])
+            edge = (min(v0, v1), max(v0, v1))
+            edge_count[edge] = edge_count.get(edge, 0) + 1
+
+    # Boundary edges appear exactly once
+    boundary_edges = [edge for edge, count in edge_count.items() if count == 1]
+
+    if not boundary_edges:
+        return None  # No boundary (closed mesh)
+
+    # Build adjacency from boundary edges
+    adj: Dict[int, List[int]] = {}
+    for v0, v1 in boundary_edges:
+        adj.setdefault(v0, []).append(v1)
+        adj.setdefault(v1, []).append(v0)
+
+    # Chain the boundary edges starting from any vertex
+    start = boundary_edges[0][0]
+    polygon = [start]
+    prev = None
+    curr = start
+
+    max_iter = len(boundary_edges) + 1
+    for _ in range(max_iter):
+        neighbors = adj.get(curr, [])
+        # Pick the neighbor that isn't the previous vertex
+        next_candidates = [n for n in neighbors if n != prev]
+        if not next_candidates:
+            break
+        next_v = next_candidates[0]
+        if next_v == start:
+            break  # Completed the loop
+        polygon.append(next_v)
+        prev = curr
+        curr = next_v
+
+    # Extract XY coordinates
+    return V[polygon, :2]
+
+
 # ---------------- Mesh IO & metrics ----------------
 
 def write_obj_with_groups(path: str, groups: Dict[str, Tuple[np.ndarray, np.ndarray]]):
@@ -451,19 +519,15 @@ class SurfaceMeshResult:
         if "trench_cap_for_volume" in self.groups:
             V_cap, F_cap = self.groups["trench_cap_for_volume"]
             if V_cap.size > 0:
-                # Get unique vertices at z ≈ ground level (the top cap boundary)
-                # These form the trench opening polygon
-                z_level = float(np.median(V_cap[:, 2]))
-                xy_coords = V_cap[:, :2]
-                # Use convex hull to get ordered boundary vertices
-                try:
-                    from scipy.spatial import ConvexHull
-                    hull = ConvexHull(xy_coords)
-                    boundary_indices = hull.vertices
-                    trench_opening_vertices = xy_coords[boundary_indices].tolist()
-                except ImportError:
-                    # Fallback: just use unique xy coords (unordered)
-                    trench_opening_vertices = xy_coords.tolist()
+                # Extract boundary polygon by finding boundary edges (edges in only one face)
+                # and chaining them together. This correctly handles non-convex shapes
+                # like L-shaped or U-shaped trenches.
+                boundary_xy = _extract_boundary_polygon(V_cap, F_cap)
+                if boundary_xy is not None:
+                    trench_opening_vertices = boundary_xy.tolist()
+                else:
+                    # Fallback: just use all vertices (unordered)
+                    trench_opening_vertices = V_cap[:, :2].tolist()
 
         # Determine geometry type
         is_closed = _is_path_closed(self.spec.path_xy)
@@ -489,7 +553,7 @@ class SurfaceMeshResult:
 
         return {
             "sdf_metadata": {
-                "version": "1.0",
+                "version": "2.0",
                 "normal_convention": "into_void",
                 "geometry_type": geometry_type,
                 "trench_opening": {

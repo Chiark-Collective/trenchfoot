@@ -236,7 +236,7 @@ class TestSDFMetadata:
         for field in required_fields:
             assert field in meta, f"Required field '{field}' missing from metadata"
 
-        assert meta["version"] == "1.0"
+        assert meta["version"] == "2.0"
         assert meta["normal_convention"] == "into_void"
         assert meta["geometry_type"] == "open_trench"
 
@@ -336,6 +336,71 @@ class TestSDFMetadata:
         assert embedded["pipes"] == 2
         assert embedded["spheres"] == 1
         assert embedded["boxes"] == 0
+
+    def test_metadata_l_shaped_polygon_is_non_convex(self, tmp_path):
+        """L-shaped trench opening polygon should be non-convex (not use ConvexHull).
+
+        The L-shape has an inner corner that ConvexHull would skip. This test
+        verifies that the boundary extraction correctly captures the inner corner.
+        """
+        # Create an L-shaped path
+        spec_dict = _minimal_spec_dict()
+        spec_dict["path_xy"] = [
+            [0.0, 0.0],   # Start
+            [3.0, 0.0],   # Go right
+            [3.0, 2.0],   # Turn up
+        ]
+        spec_dict["width"] = 1.0
+        spec_dict["depth"] = 1.2
+
+        spec = scene_spec_from_dict(spec_dict)
+        result = generate_surface_mesh(spec, make_preview=False)
+        files = result.persist(tmp_path)
+
+        with files.sdf_metadata_path.open() as f:
+            data = json.load(f)
+
+        opening = data["sdf_metadata"]["trench_opening"]
+        vertices = np.array(opening["vertices_xy"])
+
+        # An L-shaped trench should have 6 vertices (correct boundary extraction)
+        # ConvexHull would give 4 vertices (skipping the inner corner)
+        # Note: The L-shape has vertices at:
+        #   - left side (x ~ 0)
+        #   - inner corner of L (around y ~ 0.5 for horizontal arm)
+        #   - right/top end (x ~ 3.5, y ~ 2.0)
+        assert len(vertices) >= 6, (
+            f"L-shaped polygon has {len(vertices)} vertices, expected >= 6. "
+            "This might indicate ConvexHull is being used instead of boundary extraction."
+        )
+
+        # Verify the polygon covers the full L-shape bounds
+        x_min, x_max = vertices[:, 0].min(), vertices[:, 0].max()
+        y_min, y_max = vertices[:, 1].min(), vertices[:, 1].max()
+
+        # X should cover the horizontal arm (roughly 0 to 3.5 with width=1)
+        assert x_min < 0.5, f"L-shape x_min ({x_min}) should be < 0.5"
+        assert x_max > 2.5, f"L-shape x_max ({x_max}) should be > 2.5"
+
+        # Y should cover the vertical arm (roughly -0.5 to 2 with width=1)
+        assert y_min < 0.5, f"L-shape y_min ({y_min}) should be < 0.5"
+        assert y_max > 1.5, f"L-shape y_max ({y_max}) should be > 1.5"
+
+        # Critical: Verify the inner corner vertices are present
+        # The inner corner of the L is around x=2.5, y=0.5 (inner corner)
+        # ConvexHull would skip these vertices and go directly from (0, 0.5) to (3.5, 2)
+        inner_corner_found = False
+        for v in vertices:
+            # Look for a vertex at the inner corner (around x=2.5, y between 0 and 1)
+            if 2.0 < v[0] < 3.0 and 0.0 < v[1] < 1.0:
+                inner_corner_found = True
+                break
+
+        assert inner_corner_found, (
+            f"Inner corner vertex not found in L-shaped polygon. "
+            f"Vertices: {vertices.tolist()}. "
+            "This suggests ConvexHull is being used instead of boundary extraction."
+        )
 
 
 class TestCircularWellNormals:

@@ -8,22 +8,41 @@
       "vertices_xy": [
         [
           0.0,
-          0.5
-        ],
-        [
-          5.0,
-          0.5
-        ],
-        [
-          5.0,
           -0.5
         ],
         [
           0.0,
+          0.5
+        ],
+        [
+          5.0,
+          0.5
+        ],
+        [
+          5.0,
           -0.5
         ]
       ],
       "z_level": 0.0
+    },
+    "surface_groups": {
+      "trench_bottom": {
+        "normal_direction": "up",
+        "surface_type": "floor"
+      },
+      "trench_walls": {
+        "normal_direction": "inward",
+        "surface_type": "wall"
+      },
+      "ground_surface": {
+        "normal_direction": "up",
+        "surface_type": "ground"
+      }
+    },
+    "embedded_objects": {
+      "pipes": 0,
+      "boxes": 0,
+      "spheres": 0
     }
   }
 }

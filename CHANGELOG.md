@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.1] - 2026-01-28
+
+### Fixed
+- **Non-convex polygon extraction**: `_build_sdf_metadata()` now correctly extracts boundary polygons for non-convex shapes (L-shaped, U-shaped trenches) using boundary edge chaining instead of ConvexHull. ConvexHull was incorrectly filling in concave regions, causing sign computation errors at trench edges.
+- **sdf_metadata version bumped to 2.0**: Updated version to reflect the corrected polygon format.
+
+### Added
+- **`_extract_boundary_polygon()` helper**: New geometry helper that extracts ordered boundary vertices from triangulated meshes by finding boundary edges (edges appearing in only one face) and chaining them together.
+- **L-shaped polygon test**: Added `test_metadata_l_shaped_polygon_is_non_convex` to verify correct handling of non-convex trench shapes.
+
 ## [0.4.0] - 2026-01-26
 
 ### Added

@@ -8,11 +8,15 @@
       "vertices_xy": [
         [
           0.0,
+          -1.2
+        ],
+        [
+          0.0,
           1.2
         ],
         [
           7.8,
-          0.0
+          1.2
         ],
         [
           7.8,
@@ -24,14 +28,57 @@
         ],
         [
           10.2,
-          0.0
-        ],
-        [
-          0.0,
           -1.2
         ]
       ],
       "z_level": 0.0
+    },
+    "surface_groups": {
+      "trench_bottom": {
+        "normal_direction": "up",
+        "surface_type": "floor"
+      },
+      "trench_walls": {
+        "normal_direction": "inward",
+        "surface_type": "wall"
+      },
+      "ground_surface": {
+        "normal_direction": "up",
+        "surface_type": "ground"
+      },
+      "pipe0_pipe_side": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "pipe0_pipe_cap_neg": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "pipe0_pipe_cap_pos": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "pipe1_pipe_side": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "pipe1_pipe_cap_neg": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "pipe1_pipe_cap_pos": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "box0": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      }
+    },
+    "embedded_objects": {
+      "pipes": 2,
+      "boxes": 1,
+      "spheres": 0
     }
   }
 }

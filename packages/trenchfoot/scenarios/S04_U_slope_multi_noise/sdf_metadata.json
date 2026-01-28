@@ -8,14 +8,18 @@
       "vertices_xy": [
         [
           0.0,
+          -0.7
+        ],
+        [
+          0.0,
           0.7
         ],
         [
           5.3,
-          0.0
+          0.7
         ],
         [
-          6.0,
+          5.3,
           3.3
         ],
         [
@@ -24,22 +28,77 @@
         ],
         [
           0.0,
-          4.7
-        ],
-        [
-          6.0,
           4.7
         ],
         [
           6.7,
-          0.0
+          4.7
         ],
         [
-          0.0,
+          6.7,
           -0.7
         ]
       ],
       "z_level": 0.0
+    },
+    "surface_groups": {
+      "trench_bottom": {
+        "normal_direction": "up",
+        "surface_type": "floor"
+      },
+      "trench_walls": {
+        "normal_direction": "inward",
+        "surface_type": "wall"
+      },
+      "ground_surface": {
+        "normal_direction": "up",
+        "surface_type": "ground"
+      },
+      "pipe0_pipe_side": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "pipe0_pipe_cap_neg": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "pipe0_pipe_cap_pos": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "pipe1_pipe_side": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "pipe1_pipe_cap_neg": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "pipe1_pipe_cap_pos": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "pipe2_pipe_side": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "pipe2_pipe_cap_neg": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "pipe2_pipe_cap_pos": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "sphere0": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      }
+    },
+    "embedded_objects": {
+      "pipes": 3,
+      "boxes": 0,
+      "spheres": 1
     }
   }
 }

@@ -2,60 +2,87 @@
   "sdf_metadata": {
     "version": "2.0",
     "normal_convention": "into_void",
-    "geometry_type": "open_trench",
+    "geometry_type": "closed_well",
     "trench_opening": {
       "type": "polygon",
       "vertices_xy": [
         [
-          0.3152963125472329,
-          1.2611852501889316
+          -0.8953594528137068,
+          -1.116169465122313
         ],
         [
-          3.684703687452767,
-          0.2611852501889316
-        ],
-        [
-          6.7,
-          0.0
-        ],
-        [
-          8.0,
-          3.7
-        ],
-        [
-          2.9192388155425117,
-          4.080761184457488
-        ],
-        [
-          -0.08076118445748814,
-          1.0807611844574883
-        ],
-        [
-          -1.9192388155425117,
-          2.9192388155425117
-        ],
-        [
-          1.0807611844574883,
-          5.919238815542512
-        ],
-        [
-          8.0,
-          6.3
+          4.0,
+          -2.3400093283257397
         ],
         [
           9.3,
-          0.0
+          -1.0150093283257395
         ],
         [
-          4.315296312547233,
-          -2.2611852501889316
+          9.3,
+          6.3
         ],
         [
-          -0.3152963125472329,
-          -1.2611852501889316
+          1.4615223689149763,
+          6.3
+        ],
+        [
+          -2.58178866727825,
+          2.2566889638067735
         ]
       ],
       "z_level": 0.2
+    },
+    "surface_groups": {
+      "trench_bottom": {
+        "normal_direction": "up",
+        "surface_type": "floor"
+      },
+      "trench_walls": {
+        "normal_direction": "inward",
+        "surface_type": "wall"
+      },
+      "ground_surface": {
+        "normal_direction": "up",
+        "surface_type": "ground"
+      },
+      "ground_island": {
+        "normal_direction": "up",
+        "surface_type": "ground"
+      },
+      "pipe0_pipe_side": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "pipe0_pipe_cap_neg": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "pipe0_pipe_cap_pos": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "pipe1_pipe_side": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "pipe1_pipe_cap_neg": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "pipe1_pipe_cap_pos": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      },
+      "sphere0": {
+        "normal_direction": "outward",
+        "surface_type": "embedded_object"
+      }
+    },
+    "embedded_objects": {
+      "pipes": 2,
+      "boxes": 0,
+      "spheres": 1
     }
   }
 }
