@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.4.2] - 2026-01-29
+
+### Added
+- **Embedded object truncation**: Pipes, boxes, and spheres that extend beyond trench boundaries are now automatically truncated or shrunk to fit within the trench void:
+  - **Pipes**: Truncated at walls/floor with angled elliptical caps matching the intersection plane
+  - **Boxes**: Dimensions shrunk to fit within available space
+  - **Spheres**: Radius reduced to fit within available space
+- **New helper functions** for trench boundary computation:
+  - `_find_trench_frame_at_xy()`: Find local trench coordinate frame at any XY position
+  - `_compute_pipe_truncation()`: Binary search for where pipe exits trench
+  - `_compute_cap_plane_at_truncation()`: Determine wall/floor plane at intersection
+  - `_compute_box_fit()`: Calculate shrunk box dimensions
+  - `_compute_sphere_fit()`: Calculate shrunk sphere radius
+- **Extended `make_cylinder()`**: Now supports asymmetric extents (`neg_extent`, `pos_extent`) and angled cap planes (`cap_plane_neg`, `cap_plane_pos`)
+- **New tests** for truncation functionality:
+  - `test_pipe_truncation_at_wall`
+  - `test_pipe_truncation_at_floor`
+  - `test_pipe_angled_cap_geometry`
+  - `test_box_shrink_to_fit`
+  - `test_sphere_shrink_to_fit`
+  - `test_no_vertices_outside_trench`
+
+### Fixed
+- Long pipes in S07 circular well no longer protrude through trench walls
+- Oversized embedded objects no longer extend outside trench geometry
+
 ## [0.4.1] - 2026-01-28
 
 ### Fixed

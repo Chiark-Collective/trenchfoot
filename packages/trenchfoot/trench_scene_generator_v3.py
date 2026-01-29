@@ -18,7 +18,7 @@ Outputs:
 from __future__ import annotations
 
 import io
-import os, json, math, argparse, re
+import os, json, math, argparse
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Any
@@ -614,40 +614,201 @@ def _frame_from_axis(axis_dir: np.ndarray) -> np.ndarray:
     u=_normalize(np.cross(helper,v)); w=np.cross(v,u)
     return np.column_stack([u,v,w])
 
-def make_cylinder(center: np.ndarray, axis_dir: np.ndarray, radius: float, length: float,
-                  n_theta: int=64, n_along: int=32, with_caps: bool=True):
-    n_theta=max(8,int(n_theta)); n_along=max(1,int(n_along))
-    thetas=np.linspace(0,2*np.pi,n_theta+1); ys=np.linspace(-length/2.0,length/2.0,n_along+1)
-    Vloc=[]
-    for j in range(n_along+1):
-        y=ys[j]
-        for i in range(n_theta+1):
-            th=thetas[i]; x=radius*np.cos(th); z=radius*np.sin(th)
-            Vloc.append([x,y,z])
-    Vloc=np.array(Vloc,float)
-    def idx(i,j): return j*(n_theta+1)+i
-    F=[]
+def make_cylinder(
+    center: np.ndarray,
+    axis_dir: np.ndarray,
+    radius: float,
+    length: float,
+    n_theta: int = 64,
+    n_along: int = 32,
+    with_caps: bool = True,
+    neg_extent: Optional[float] = None,
+    pos_extent: Optional[float] = None,
+    cap_plane_neg: Optional[Tuple[np.ndarray, np.ndarray]] = None,
+    cap_plane_pos: Optional[Tuple[np.ndarray, np.ndarray]] = None,
+) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
+    """Generate a cylinder mesh with optional truncation and angled caps.
+
+    Parameters
+    ----------
+    center : np.ndarray
+        Center point of the cylinder (3D).
+    axis_dir : np.ndarray
+        Unit vector along the cylinder axis (3D).
+    radius : float
+        Cylinder radius.
+    length : float
+        Total cylinder length (used if neg/pos_extent not specified).
+    n_theta : int
+        Number of angular divisions.
+    n_along : int
+        Number of divisions along the axis.
+    with_caps : bool
+        Whether to generate end caps.
+    neg_extent : float, optional
+        Distance from center to negative end. If None, uses -length/2.
+    pos_extent : float, optional
+        Distance from center to positive end. If None, uses +length/2.
+    cap_plane_neg : tuple, optional
+        (normal, point) defining the plane for negative cap. If provided,
+        generates an elliptical cap on this plane instead of a flat circular cap.
+    cap_plane_pos : tuple, optional
+        (normal, point) for positive cap.
+
+    Returns
+    -------
+    dict
+        Dictionary with 'pipe_side' and optionally 'pipe_cap_neg', 'pipe_cap_pos'.
+    """
+    n_theta = max(8, int(n_theta))
+    n_along = max(1, int(n_along))
+
+    # Use extents if provided, otherwise symmetric from length
+    y_neg = neg_extent if neg_extent is not None else -length / 2.0
+    y_pos = pos_extent if pos_extent is not None else length / 2.0
+
+    # Build coordinate frame
+    M = _frame_from_axis(axis_dir)
+
+    def xform(V: np.ndarray) -> np.ndarray:
+        return (center + V @ M.T).astype(float)
+
+    # Generate cylinder side surface
+    thetas = np.linspace(0, 2 * np.pi, n_theta + 1)
+    ys = np.linspace(y_neg, y_pos, n_along + 1)
+    Vloc = []
+    for j in range(n_along + 1):
+        y = ys[j]
+        for i in range(n_theta + 1):
+            th = thetas[i]
+            x = radius * np.cos(th)
+            z = radius * np.sin(th)
+            Vloc.append([x, y, z])
+    Vloc = np.array(Vloc, float)
+
+    def idx(i: int, j: int) -> int:
+        return j * (n_theta + 1) + i
+
+    F = []
     for j in range(n_along):
         for i in range(n_theta):
-            v00=idx(i,j); v10=idx(i+1,j); v01=idx(i,j+1); v11=idx(i+1,j+1)
-            F.append([v00,v01,v11]); F.append([v00,v11,v10])
-    F=np.array(F,int)
-    caps={}
+            v00 = idx(i, j)
+            v10 = idx(i + 1, j)
+            v01 = idx(i, j + 1)
+            v11 = idx(i + 1, j + 1)
+            F.append([v00, v01, v11])
+            F.append([v00, v11, v10])
+    F = np.array(F, int)
+
+    out: Dict[str, Tuple[np.ndarray, np.ndarray]] = {"pipe_side": (xform(Vloc), F)}
+
     if with_caps:
-        ring=np.array([[radius*np.cos(t),-length/2.0,radius*np.sin(t)] for t in thetas[:-1]],float)
-        Vn=np.vstack([np.array([[0.0,-length/2.0,0.0]],float), ring])
-        Fn=np.array([[0,1+(i+1)%len(ring),1+i] for i in range(len(ring))],int)
-        ring=np.array([[radius*np.cos(t),+length/2.0,radius*np.sin(t)] for t in thetas[:-1]],float)
-        Vp=np.vstack([np.array([[0.0,+length/2.0,0.0]],float), ring])
-        Fp=np.array([[0,1+i,1+(i+1)%len(ring)] for i in range(len(ring))],int)
-        caps['pipe_cap_neg']=(Vn,Fn); caps['pipe_cap_pos']=(Vp,Fp)
-    M=_frame_from_axis(axis_dir)
-    def xform(V): return (center + V @ M.T).astype(float)
-    out={"pipe_side": (xform(Vloc), F)}
-    if with_caps:
-        Vn,Fn=caps['pipe_cap_neg']; Vp,Fp=caps['pipe_cap_pos']
-        out['pipe_cap_neg']=(xform(Vn),Fn); out['pipe_cap_pos']=(xform(Vp),Fp)
+        # Generate caps (either flat circular or angled elliptical)
+        Vn, Fn = _make_cylinder_cap(
+            radius, y_neg, thetas[:-1], M, center, axis_dir,
+            cap_plane_neg, is_negative=True
+        )
+        Vp, Fp = _make_cylinder_cap(
+            radius, y_pos, thetas[:-1], M, center, axis_dir,
+            cap_plane_pos, is_negative=False
+        )
+        out['pipe_cap_neg'] = (Vn, Fn)
+        out['pipe_cap_pos'] = (Vp, Fp)
+
     return out
+
+
+def _make_cylinder_cap(
+    radius: float,
+    y_extent: float,
+    thetas: np.ndarray,
+    M: np.ndarray,
+    center: np.ndarray,
+    axis_dir: np.ndarray,
+    cap_plane: Optional[Tuple[np.ndarray, np.ndarray]],
+    is_negative: bool,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Generate a cylinder end cap, either flat or angled.
+
+    For angled caps, we compute where each point on the cylinder rim
+    intersects the cap plane, creating an elliptical cap.
+    """
+    n_theta = len(thetas)
+
+    if cap_plane is None:
+        # Flat circular cap perpendicular to axis
+        ring = np.array([
+            [radius * np.cos(t), y_extent, radius * np.sin(t)]
+            for t in thetas
+        ], float)
+        cap_center = np.array([[0.0, y_extent, 0.0]], float)
+        V = np.vstack([cap_center, ring])
+
+        # Apply transformation to world coordinates
+        V_world = center + V @ M.T
+
+        # Generate fan triangles
+        if is_negative:
+            # Negative cap: winding for outward normal (toward -axis)
+            F = np.array([[0, 1 + (i + 1) % n_theta, 1 + i] for i in range(n_theta)], int)
+        else:
+            # Positive cap: winding for outward normal (toward +axis)
+            F = np.array([[0, 1 + i, 1 + (i + 1) % n_theta] for i in range(n_theta)], int)
+
+        return V_world.astype(float), F
+    else:
+        # Angled cap: intersect cylinder rim with plane
+        plane_normal, plane_point = cap_plane
+        plane_normal = _normalize(plane_normal)
+
+        # Points on the cylinder rim at y_extent (in local coords before xform)
+        ring_local = np.array([
+            [radius * np.cos(t), y_extent, radius * np.sin(t)]
+            for t in thetas
+        ], float)
+
+        # Transform ring to world coordinates
+        ring_world = center + ring_local @ M.T
+
+        # For each ring point, project along axis onto the cap plane
+        # Line: P = ring_point + t * axis_dir
+        # Plane: dot(P - plane_point, plane_normal) = 0
+        # => t = dot(plane_point - ring_point, plane_normal) / dot(axis_dir, plane_normal)
+        denom = np.dot(axis_dir, plane_normal)
+        if abs(denom) < 1e-10:
+            # Axis is parallel to plane - fall back to flat cap
+            V_world = np.vstack([
+                center + np.array([0.0, y_extent, 0.0]) @ M.T,
+                ring_world
+            ])
+            if is_negative:
+                F = np.array([[0, 1 + (i + 1) % n_theta, 1 + i] for i in range(n_theta)], int)
+            else:
+                F = np.array([[0, 1 + i, 1 + (i + 1) % n_theta] for i in range(n_theta)], int)
+            return V_world.astype(float), F
+
+        # Project ring points onto plane
+        cap_verts = []
+        for ring_pt in ring_world:
+            t = np.dot(plane_point - ring_pt, plane_normal) / denom
+            cap_pt = ring_pt + t * axis_dir
+            cap_verts.append(cap_pt)
+        cap_verts = np.array(cap_verts, float)
+
+        # Cap center: project axis center onto plane
+        axis_pt = center + y_extent * axis_dir
+        t_center = np.dot(plane_point - axis_pt, plane_normal) / denom
+        cap_center = axis_pt + t_center * axis_dir
+
+        V_world = np.vstack([cap_center.reshape(1, 3), cap_verts])
+
+        # Generate fan triangles
+        if is_negative:
+            F = np.array([[0, 1 + (i + 1) % n_theta, 1 + i] for i in range(n_theta)], int)
+        else:
+            F = np.array([[0, 1 + i, 1 + (i + 1) % n_theta] for i in range(n_theta)], int)
+
+        return V_world.astype(float), F
 
 def make_box(center: np.ndarray, frame_cols: np.ndarray, dims: Tuple[float,float,float]):
     a,b,h=dims; u=frame_cols[:,0]; v=frame_cols[:,1]; w=frame_cols[:,2]
@@ -1082,6 +1243,433 @@ def make_ground_surface_plane(path_xy: List[Tuple[float,float]], width_top: floa
 def _half_width_at_depth(half_top: float, slope: float, top_z: float, z: float) -> float:
     return max(1e-6, half_top - slope * (top_z - z))
 
+
+# ---------------- Object Truncation Helpers ----------------
+
+
+@dataclass
+class TrenchLocalFrame:
+    """Local coordinate frame at a point along the trench."""
+    centerline_xy: np.ndarray  # 2D position on centerline
+    tangent: np.ndarray        # 2D unit tangent along path
+    left_normal: np.ndarray    # 2D unit normal pointing left
+    top_z: float               # Ground elevation at this point
+    half_width_top: float      # Half-width at ground level
+    depth: float               # Trench depth
+    wall_slope: float          # Slope of walls
+
+
+def _find_trench_frame_at_xy(
+    x: float, y: float,
+    path_xy: List[Tuple[float, float]],
+    half_top: float,
+    depth: float,
+    wall_slope: float,
+    ground: GroundSpec,
+) -> Tuple[TrenchLocalFrame, float]:
+    """Find the trench local frame for a given XY position.
+
+    Returns the local coordinate frame and the local 'u' offset (signed
+    distance from centerline in left_normal direction).
+    """
+    _, total = _polyline_lengths(path_xy)
+
+    # Find closest point on path by sampling
+    best_dist_sq = float("inf")
+    best_s = 0.0
+    n_samples = max(200, int(total * 50))  # ~50 samples per unit length for precision
+    for s_val in np.linspace(0, 1, n_samples):
+        pos, _ = _sample_polyline_at_s(path_xy, s_val)
+        dist_sq = (pos[0] - x) ** 2 + (pos[1] - y) ** 2
+        if dist_sq < best_dist_sq:
+            best_dist_sq = dist_sq
+            best_s = s_val
+
+    pos, tangent = _sample_polyline_at_s(path_xy, best_s)
+    left_normal = _rotate_ccw(tangent)
+    gfun = _ground_fn(ground)
+    top_z = gfun(pos[0], pos[1])
+
+    # Compute local u offset
+    offset_vec = np.array([x - pos[0], y - pos[1]])
+    local_u = float(np.dot(offset_vec, left_normal))
+
+    frame = TrenchLocalFrame(
+        centerline_xy=pos,
+        tangent=tangent,
+        left_normal=left_normal,
+        top_z=top_z,
+        half_width_top=half_top,
+        depth=depth,
+        wall_slope=wall_slope,
+    )
+    return frame, local_u
+
+
+def _point_inside_trench(
+    x: float, y: float, z: float,
+    path_xy: List[Tuple[float, float]],
+    half_top: float,
+    depth: float,
+    wall_slope: float,
+    ground: GroundSpec,
+) -> bool:
+    """Check if a 3D point is inside the trench void."""
+    frame, local_u = _find_trench_frame_at_xy(x, y, path_xy, half_top, depth, wall_slope, ground)
+
+    # Check vertical bounds
+    if z > frame.top_z:
+        return False  # Above ground
+    if z < frame.top_z - depth:
+        return False  # Below floor
+
+    # Check horizontal bounds (accounting for wall slope)
+    half_w = _half_width_at_depth(half_top, wall_slope, frame.top_z, z)
+    return abs(local_u) <= half_w
+
+
+@dataclass
+class TruncationResult:
+    """Result of computing pipe truncation."""
+    neg_extent: float          # Distance from center to negative end
+    pos_extent: float          # Distance from center to positive end
+    neg_cap_plane: Optional[Tuple[np.ndarray, np.ndarray]]  # (normal, point) or None
+    pos_cap_plane: Optional[Tuple[np.ndarray, np.ndarray]]  # (normal, point) or None
+    was_truncated: bool        # True if any truncation occurred
+
+
+def _compute_pipe_truncation(
+    center: np.ndarray,
+    axis_dir: np.ndarray,
+    radius: float,
+    half_length: float,
+    path_xy: List[Tuple[float, float]],
+    half_top: float,
+    wall_slope: float,
+    ground: GroundSpec,
+    depth: float,
+) -> TruncationResult:
+    """Compute where a pipe axis exits the trench void.
+
+    Samples points along the pipe axis and finds where the pipe surface
+    (considering radius) would exit the trench. Returns truncated extents
+    and the wall/floor planes at each truncation point.
+
+    The truncation includes a safety margin to account for cap projection.
+    When the pipe is truncated at an angle, the cap vertices project beyond
+    the truncation point. The cap_margin ensures the entire cap stays inside.
+    """
+    # Cap safety margin: accounts for cap projection when pipe is at an angle
+    # to the trench wall. The margin is proportional to radius with a minimum.
+    cap_margin = max(0.02, 0.4 * radius)
+
+    def pipe_surface_inside(t: float) -> bool:
+        """Check if pipe surface at axis position t is inside trench.
+
+        Includes cap_margin to ensure angled caps stay inside the boundary.
+        """
+        point = center + t * axis_dir
+        x, y, z = point
+
+        # Get local trench frame
+        frame, local_u = _find_trench_frame_at_xy(
+            x, y, path_xy, half_top, depth, wall_slope, ground
+        )
+
+        # Effective radius includes cap margin for conservative truncation
+        effective_radius = radius + cap_margin
+
+        # Check floor clearance: pipe bottom must be above floor
+        floor_z = frame.top_z - depth
+        if z - effective_radius < floor_z:
+            return False
+
+        # Check ceiling clearance: pipe top must be below ground
+        if z + effective_radius > frame.top_z:
+            return False
+
+        # Check wall clearance: pipe surface must not penetrate walls
+        half_w = _half_width_at_depth(half_top, wall_slope, frame.top_z, z)
+        if abs(local_u) + effective_radius > half_w:
+            return False
+
+        return True
+
+    def binary_search_boundary(t_inside: float, t_outside: float, tol: float = 0.001) -> float:
+        """Binary search to find boundary between inside and outside."""
+        for _ in range(50):  # Max iterations
+            if abs(t_outside - t_inside) < tol:
+                break
+            t_mid = (t_inside + t_outside) / 2
+            if pipe_surface_inside(t_mid):
+                t_inside = t_mid
+            else:
+                t_outside = t_mid
+        return t_inside
+
+    # Find negative extent
+    neg_extent = -half_length
+    was_neg_truncated = False
+    if pipe_surface_inside(0):
+        # Search from center toward negative end
+        step = 0.02  # 2cm steps
+        t = 0
+        while t > -half_length:
+            t -= step
+            if not pipe_surface_inside(t):
+                # Found exit, binary search for exact boundary
+                neg_extent = binary_search_boundary(t + step, t)
+                was_neg_truncated = True
+                break
+        if not was_neg_truncated:
+            # Never exited, use full length
+            neg_extent = -half_length
+
+    # Find positive extent
+    pos_extent = half_length
+    was_pos_truncated = False
+    if pipe_surface_inside(0):
+        step = 0.02
+        t = 0
+        while t < half_length:
+            t += step
+            if not pipe_surface_inside(t):
+                pos_extent = binary_search_boundary(t - step, t)
+                was_pos_truncated = True
+                break
+        if not was_pos_truncated:
+            pos_extent = half_length
+
+    # Compute cap planes at truncation points
+    neg_cap_plane = None
+    pos_cap_plane = None
+
+    if was_neg_truncated:
+        neg_cap_plane = _compute_cap_plane_at_truncation(
+            center + neg_extent * axis_dir, radius,
+            path_xy, half_top, wall_slope, ground, depth
+        )
+
+    if was_pos_truncated:
+        pos_cap_plane = _compute_cap_plane_at_truncation(
+            center + pos_extent * axis_dir, radius,
+            path_xy, half_top, wall_slope, ground, depth
+        )
+
+    was_truncated = was_neg_truncated or was_pos_truncated
+    return TruncationResult(
+        neg_extent=neg_extent,
+        pos_extent=pos_extent,
+        neg_cap_plane=neg_cap_plane,
+        pos_cap_plane=pos_cap_plane,
+        was_truncated=was_truncated,
+    )
+
+
+def _compute_cap_plane_at_truncation(
+    point: np.ndarray,
+    radius: float,
+    path_xy: List[Tuple[float, float]],
+    half_top: float,
+    wall_slope: float,
+    ground: GroundSpec,
+    depth: float,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Compute the plane where the pipe intersects the trench boundary.
+
+    Determines which boundary (left wall, right wall, floor) the pipe exits
+    through and returns (normal, point) for that plane.
+    """
+    x, y, z = point
+    frame, local_u = _find_trench_frame_at_xy(
+        x, y, path_xy, half_top, depth, wall_slope, ground
+    )
+
+    floor_z = frame.top_z - depth
+    half_w = _half_width_at_depth(half_top, wall_slope, frame.top_z, z)
+
+    # Determine which boundary was hit
+    dist_to_floor = z - radius - floor_z
+    dist_to_ceiling = frame.top_z - (z + radius)
+    dist_to_left_wall = half_w - (local_u + radius)
+    dist_to_right_wall = half_w - (-local_u + radius)
+
+    # For sloped walls, the wall normal has a horizontal and vertical component
+    # Wall slope means the wall goes inward as we go down
+    # Wall normal = (left_normal_2d_x, left_normal_2d_y, slope) normalized
+    if wall_slope > 0:
+        wall_normal_3d = np.array([
+            frame.left_normal[0],
+            frame.left_normal[1],
+            wall_slope
+        ], float)
+        wall_normal_3d = wall_normal_3d / np.linalg.norm(wall_normal_3d)
+    else:
+        wall_normal_3d = np.array([frame.left_normal[0], frame.left_normal[1], 0.0], float)
+
+    # Find which boundary is closest (most violated)
+    min_dist = min(dist_to_floor, dist_to_ceiling, dist_to_left_wall, dist_to_right_wall)
+
+    if min_dist == dist_to_floor or dist_to_floor < 0:
+        # Hit floor - horizontal plane at floor level
+        plane_normal = np.array([0.0, 0.0, 1.0], float)
+        plane_point = np.array([x, y, floor_z], float)
+    elif min_dist == dist_to_ceiling or dist_to_ceiling < 0:
+        # Hit ceiling (ground) - horizontal plane at ground level
+        plane_normal = np.array([0.0, 0.0, -1.0], float)
+        plane_point = np.array([x, y, frame.top_z], float)
+    elif min_dist == dist_to_left_wall or dist_to_left_wall < 0:
+        # Hit left wall
+        plane_normal = -wall_normal_3d  # Points inward (into trench)
+        wall_x = frame.centerline_xy[0] + half_w * frame.left_normal[0]
+        wall_y = frame.centerline_xy[1] + half_w * frame.left_normal[1]
+        plane_point = np.array([wall_x, wall_y, z], float)
+    else:
+        # Hit right wall
+        plane_normal = wall_normal_3d  # Flip for right wall
+        plane_normal[0] = -plane_normal[0]
+        plane_normal[1] = -plane_normal[1]
+        wall_x = frame.centerline_xy[0] - half_w * frame.left_normal[0]
+        wall_y = frame.centerline_xy[1] - half_w * frame.left_normal[1]
+        plane_point = np.array([wall_x, wall_y, z], float)
+
+    return plane_normal, plane_point
+
+
+def _compute_box_fit(
+    center: np.ndarray,
+    along: float,
+    across: float,
+    height: float,
+    path_xy: List[Tuple[float, float]],
+    half_top: float,
+    wall_slope: float,
+    ground: GroundSpec,
+    depth: float,
+    clearance: float = 0.02,
+) -> Tuple[float, float, float]:
+    """Compute shrunk box dimensions to fit within trench.
+
+    Returns (along, across, height) that fit within the trench at the given
+    center position.
+    """
+    x, y, z = center
+    frame, local_u = _find_trench_frame_at_xy(
+        x, y, path_xy, half_top, depth, wall_slope, ground
+    )
+
+    floor_z = frame.top_z - depth
+
+    # Max height: from floor to ground, minus clearance
+    max_height = (frame.top_z - floor_z) - 2 * clearance
+    fit_height = min(height, max_height)
+
+    # Recompute z to center the box if height was shrunk
+    if fit_height < height:
+        # Center box vertically in trench
+        z_new = floor_z + clearance + fit_height / 2
+    else:
+        z_new = z
+
+    # At the box center depth, what's the half-width?
+    half_w = _half_width_at_depth(half_top, wall_slope, frame.top_z, z_new)
+
+    # Max across: must fit within walls accounting for offset from centerline
+    # The box extends ±across/2 from center, so:
+    # local_u + across/2 <= half_w - clearance
+    # local_u - across/2 >= -(half_w - clearance)
+    # => across/2 <= min(half_w - clearance - local_u, half_w - clearance + local_u)
+    max_across = 2 * (half_w - clearance - abs(local_u))
+    fit_across = max(0.01, min(across, max_across))
+
+    # Along dimension: no shrinking needed for typical cases
+    # (pipes along trench axis can be arbitrarily long within path bounds)
+    fit_along = along
+
+    return fit_along, fit_across, fit_height
+
+
+def _compute_sphere_fit(
+    center: np.ndarray,
+    radius: float,
+    path_xy: List[Tuple[float, float]],
+    half_top: float,
+    wall_slope: float,
+    ground: GroundSpec,
+    depth: float,
+    clearance: float = 0.02,
+) -> float:
+    """Compute shrunk sphere radius to fit within trench.
+
+    Returns the maximum radius that fits within the trench at the given center.
+    """
+    x, y, z = center
+    frame, local_u = _find_trench_frame_at_xy(
+        x, y, path_xy, half_top, depth, wall_slope, ground
+    )
+
+    floor_z = frame.top_z - depth
+
+    # Distance to floor
+    dist_floor = z - floor_z - clearance
+
+    # Distance to ground
+    dist_ground = frame.top_z - z - clearance
+
+    # Distance to nearest wall (accounting for offset)
+    half_w = _half_width_at_depth(half_top, wall_slope, frame.top_z, z)
+    dist_wall = half_w - abs(local_u) - clearance
+
+    # Maximum radius is minimum of all distances
+    max_radius = max(0.01, min(dist_floor, dist_ground, dist_wall))
+
+    return min(radius, max_radius)
+
+
+def _clip_vertices_to_trench(
+    V: np.ndarray,
+    path_xy: List[Tuple[float, float]],
+    half_top: float,
+    wall_slope: float,
+    ground: GroundSpec,
+    depth: float,
+) -> np.ndarray:
+    """Clip vertices to stay inside the trench boundary.
+
+    Any vertex outside the trench is projected back to the nearest boundary.
+    This handles edge cases where cap projection pushes vertices outside.
+    """
+    V_clipped = V.copy()
+
+    for i, vert in enumerate(V):
+        x, y, z = vert
+        frame, local_u = _find_trench_frame_at_xy(
+            x, y, path_xy, half_top, depth, wall_slope, ground
+        )
+
+        floor_z = frame.top_z - depth
+        half_w = _half_width_at_depth(half_top, wall_slope, frame.top_z, z)
+
+        # Clip z to floor/ceiling
+        z_clipped = np.clip(z, floor_z, frame.top_z)
+
+        # Clip u to walls (need to update xy)
+        if abs(local_u) > half_w:
+            # Project point back to wall
+            u_clipped = np.sign(local_u) * half_w
+            # Adjust xy: move toward centerline
+            delta_u = u_clipped - local_u
+            x_clipped = x + delta_u * frame.left_normal[0]
+            y_clipped = y + delta_u * frame.left_normal[1]
+        else:
+            x_clipped = x
+            y_clipped = y
+
+        V_clipped[i] = [x_clipped, y_clipped, z_clipped]
+
+    return V_clipped
+
+
 # ---------------- Noise ----------------
 
 def vertex_normals(V: np.ndarray, F: np.ndarray) -> np.ndarray:
@@ -1189,16 +1777,40 @@ def _build_surface_groups(
         top_z = gfun(pos_xy[0], pos_xy[1])
         req_u = float(p.offset_u)
         req_z = float(p.z if p.z is not None else (top_z - spec.depth * 0.5))
-        z_min = top_z - spec.depth + (p.radius + clearance)
-        z_max = top_z - (p.radius + clearance)
+
+        # Cap margin accounts for cap projection when pipe is at angle to wall
+        cap_margin = max(0.02, 0.4 * p.radius)
+        effective_radius = p.radius + cap_margin
+
+        z_min = top_z - spec.depth + (effective_radius + clearance)
+        z_max = top_z - (effective_radius + clearance)
         zc = float(np.clip(req_z, z_min, z_max))
         half_w = _half_width_at_depth(half_top, spec.wall_slope, top_z, zc)
-        umax = max(0.0, half_w - (p.radius + clearance))
+        umax = max(0.0, half_w - (effective_radius + clearance))
         u = float(np.clip(req_u, -umax, umax))
         ctr_xy = pos_xy + u * left_normal
         center = np.array([ctr_xy[0], ctr_xy[1], zc], float)
-        cyl = make_cylinder(center, axis_dir, p.radius, p.length, p.n_theta, p.n_along, with_caps=True)
+
+        # Compute pipe truncation at trench boundaries
+        trunc = _compute_pipe_truncation(
+            center, axis_dir, p.radius, p.length / 2.0,
+            spec.path_xy, half_top, spec.wall_slope, spec.ground, spec.depth
+        )
+
+        cyl = make_cylinder(
+            center, axis_dir, p.radius, p.length,
+            p.n_theta, p.n_along, with_caps=True,
+            neg_extent=trunc.neg_extent,
+            pos_extent=trunc.pos_extent,
+            cap_plane_neg=trunc.neg_cap_plane,
+            cap_plane_pos=trunc.pos_cap_plane,
+        )
         for key, (V, F) in cyl.items():
+            # Clip cap vertices to trench boundary to handle projection overshoot
+            if "cap" in key:
+                V = _clip_vertices_to_trench(
+                    V, spec.path_xy, half_top, spec.wall_slope, spec.ground, spec.depth
+                )
             groups[f"pipe{idx}_{key}"] = (V, F)
 
     for j, b in enumerate(spec.boxes):
@@ -1215,6 +1827,19 @@ def _build_surface_groups(
         u = float(np.clip(req_u, -umax, umax))
         ctr_xy = pos_xy + u * left_normal
         center = np.array([ctr_xy[0], ctr_xy[1], zc], float)
+
+        # Compute shrunk box dimensions to fit within trench
+        fit_along, fit_across, fit_height = _compute_box_fit(
+            center, b.along, b.across, b.height,
+            spec.path_xy, half_top, spec.wall_slope, spec.ground, spec.depth, clearance
+        )
+
+        # Re-center if height was shrunk
+        if fit_height < b.height:
+            floor_z = top_z - spec.depth
+            zc = floor_z + clearance + fit_height / 2
+            center = np.array([ctr_xy[0], ctr_xy[1], zc], float)
+
         frame_cols = np.column_stack(
             [
                 np.array([tangent[0], tangent[1], 0.0]),
@@ -1222,7 +1847,7 @@ def _build_surface_groups(
                 np.array([0.0, 0.0, 1.0]),
             ]
         )
-        Vb, Fb = make_box(center, frame_cols, (b.along, b.across, b.height))
+        Vb, Fb = make_box(center, frame_cols, (fit_along, fit_across, fit_height))
         groups[f"box{j}"] = (Vb, Fb)
 
     for k, s in enumerate(spec.spheres):
@@ -1239,7 +1864,22 @@ def _build_surface_groups(
         u = float(np.clip(req_u, -umax, umax))
         ctr_xy = pos_xy + u * left_normal
         center = np.array([ctr_xy[0], ctr_xy[1], zc], float)
-        Vs, Fs = make_sphere(center, s.radius, n_theta=64, n_phi=32)
+
+        # Compute shrunk sphere radius to fit within trench
+        fit_radius = _compute_sphere_fit(
+            center, s.radius,
+            spec.path_xy, half_top, spec.wall_slope, spec.ground, spec.depth, clearance
+        )
+
+        # Re-center if radius was shrunk significantly
+        if fit_radius < s.radius:
+            floor_z = top_z - spec.depth
+            # Center the smaller sphere optimally
+            zc = floor_z + clearance + fit_radius
+            zc = min(zc, top_z - clearance - fit_radius)  # Also respect ceiling
+            center = np.array([ctr_xy[0], ctr_xy[1], zc], float)
+
+        Vs, Fs = make_sphere(center, fit_radius, n_theta=64, n_phi=32)
         groups[f"sphere{k}"] = (Vs, Fs)
 
     if spec.noise and spec.noise.enable:

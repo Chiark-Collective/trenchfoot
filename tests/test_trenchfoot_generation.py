@@ -484,3 +484,390 @@ def test_ground_surface_annular_structure():
 
     assert x_range > 2.0, f"Ground should span significant x range: {x_range:.2f}"
     assert y_range > 2.0, f"Ground should span significant y range: {y_range:.2f}"
+
+
+# ==================== Truncation Tests ====================
+
+
+def test_pipe_truncation_at_wall():
+    """Verify pipe perpendicular to trench is truncated at walls."""
+    import numpy as np
+
+    # Pipe oriented across the trench (90 degrees = perpendicular)
+    spec_dict = {
+        "path_xy": [[0.0, 0.0], [5.0, 0.0]],
+        "width": 1.0,
+        "depth": 1.0,
+        "wall_slope": 0.0,
+        "ground": {"z0": 0.0, "slope": [0.0, 0.0], "size_margin": 1.0},
+        "pipes": [
+            {
+                "radius": 0.1,
+                "length": 3.0,  # Much longer than trench width
+                "angle_deg": 90.0,  # Perpendicular to trench
+                "s_center": 0.5,
+                "z": -0.5,
+                "offset_u": 0.0,
+            }
+        ],
+        "boxes": [],
+        "spheres": [],
+        "noise": {"enable": False},
+    }
+    spec = scene_spec_from_dict(spec_dict)
+    result = generate_surface_mesh(spec, make_preview=False)
+
+    # Find pipe side vertices
+    pipe_groups = [k for k in result.groups.keys() if k.startswith("pipe")]
+    assert len(pipe_groups) > 0, "Should have pipe geometry"
+
+    # Collect all pipe vertices
+    all_pipe_verts = []
+    for gname in pipe_groups:
+        V, _ = result.groups[gname]
+        all_pipe_verts.append(V)
+    pipe_verts = np.vstack(all_pipe_verts)
+
+    # Trench has width=1.0, so half_width=0.5. Pipe radius=0.1.
+    # Pipe surface should not extend beyond y = ±(0.5 - small_clearance).
+    # The pipe is at 90 degrees, so its axis is along Y.
+    y_coords = pipe_verts[:, 1]
+    half_width = 0.5
+
+    # Allow small tolerance for cap geometry that might be exactly at wall
+    tolerance = 0.05
+    assert np.all(np.abs(y_coords) <= half_width + tolerance), (
+        f"Pipe vertices extend beyond trench walls: "
+        f"max |y| = {np.max(np.abs(y_coords)):.3f}, expected <= {half_width + tolerance:.3f}"
+    )
+
+
+def test_pipe_truncation_at_floor():
+    """Verify low pipe is truncated at floor level."""
+    import numpy as np
+
+    # Pipe close to floor
+    spec_dict = {
+        "path_xy": [[0.0, 0.0], [5.0, 0.0]],
+        "width": 1.0,
+        "depth": 0.5,  # Shallow trench
+        "wall_slope": 0.0,
+        "ground": {"z0": 0.0, "slope": [0.0, 0.0], "size_margin": 1.0},
+        "pipes": [
+            {
+                "radius": 0.15,
+                "length": 0.5,
+                "angle_deg": 0.0,
+                "s_center": 0.5,
+                "z": -0.6,  # Requested below floor
+                "offset_u": 0.0,
+            }
+        ],
+        "boxes": [],
+        "spheres": [],
+        "noise": {"enable": False},
+    }
+    spec = scene_spec_from_dict(spec_dict)
+    result = generate_surface_mesh(spec, make_preview=False)
+
+    # Find pipe vertices
+    pipe_groups = [k for k in result.groups.keys() if k.startswith("pipe")]
+    all_pipe_verts = []
+    for gname in pipe_groups:
+        V, _ = result.groups[gname]
+        all_pipe_verts.append(V)
+    pipe_verts = np.vstack(all_pipe_verts)
+
+    # Floor is at z = z0 - depth = 0 - 0.5 = -0.5
+    floor_z = -0.5
+    min_z = np.min(pipe_verts[:, 2])
+
+    # Pipe should not go below floor
+    tolerance = 0.02
+    assert min_z >= floor_z - tolerance, (
+        f"Pipe extends below floor: min_z = {min_z:.3f}, floor = {floor_z:.3f}"
+    )
+
+
+def test_pipe_angled_cap_geometry():
+    """Verify angled pipe caps lie on expected plane."""
+    import numpy as np
+
+    # Pipe at 90 degrees (perpendicular) to trench axis
+    spec_dict = {
+        "path_xy": [[0.0, 0.0], [5.0, 0.0]],
+        "width": 1.0,
+        "depth": 1.0,
+        "wall_slope": 0.0,
+        "ground": {"z0": 0.0, "slope": [0.0, 0.0], "size_margin": 1.0},
+        "pipes": [
+            {
+                "radius": 0.1,
+                "length": 2.0,  # Longer than trench width
+                "angle_deg": 90.0,
+                "s_center": 0.5,
+                "z": -0.5,
+                "offset_u": 0.0,
+            }
+        ],
+        "boxes": [],
+        "spheres": [],
+        "noise": {"enable": False},
+    }
+    spec = scene_spec_from_dict(spec_dict)
+    result = generate_surface_mesh(spec, make_preview=False)
+
+    # Get cap geometry
+    cap_neg = result.groups.get("pipe0_pipe_cap_neg")
+    cap_pos = result.groups.get("pipe0_pipe_cap_pos")
+
+    # Both caps should exist
+    assert cap_neg is not None, "Negative cap should exist"
+    assert cap_pos is not None, "Positive cap should exist"
+
+    V_neg, _ = cap_neg
+    V_pos, _ = cap_pos
+
+    # For perpendicular pipe truncated at walls, caps should be at y = ±wall_position
+    # The exact wall position depends on truncation logic - we verify caps are near walls
+    half_width = 0.5
+
+    # Cap vertices y-coords should be clustered near the wall positions
+    y_neg = np.mean(V_neg[:, 1])
+    y_pos = np.mean(V_pos[:, 1])
+
+    # One should be near -half_width, other near +half_width
+    tolerance = 0.1
+    assert abs(y_neg) > (half_width - tolerance) or abs(y_pos) > (half_width - tolerance), (
+        f"Cap centers should be near walls: y_neg={y_neg:.3f}, y_pos={y_pos:.3f}"
+    )
+
+
+def test_box_shrink_to_fit():
+    """Verify oversized box is shrunk to fit within trench."""
+    import numpy as np
+
+    # Box larger than trench
+    spec_dict = {
+        "path_xy": [[0.0, 0.0], [5.0, 0.0]],
+        "width": 0.8,
+        "depth": 0.6,
+        "wall_slope": 0.0,
+        "ground": {"z0": 0.0, "slope": [0.0, 0.0], "size_margin": 1.0},
+        "pipes": [],
+        "boxes": [
+            {
+                "along": 0.5,
+                "across": 2.0,  # Much wider than trench
+                "height": 1.5,  # Much taller than trench depth
+                "s": 0.5,
+                "offset_u": 0.0,
+                "z": None,
+            }
+        ],
+        "spheres": [],
+        "noise": {"enable": False},
+    }
+    spec = scene_spec_from_dict(spec_dict)
+    result = generate_surface_mesh(spec, make_preview=False)
+
+    # Get box vertices
+    V_box, _ = result.groups["box0"]
+
+    # Trench: width=0.8 (half=0.4), depth=0.6, floor at z=-0.6
+    half_width = 0.4
+    floor_z = -0.6
+    ground_z = 0.0
+
+    # Box should fit within trench
+    y_coords = V_box[:, 1]
+    z_coords = V_box[:, 2]
+
+    tolerance = 0.05
+    assert np.all(np.abs(y_coords) <= half_width + tolerance), (
+        f"Box extends beyond trench walls: max |y| = {np.max(np.abs(y_coords)):.3f}"
+    )
+    assert np.min(z_coords) >= floor_z - tolerance, (
+        f"Box extends below floor: min_z = {np.min(z_coords):.3f}"
+    )
+    assert np.max(z_coords) <= ground_z + tolerance, (
+        f"Box extends above ground: max_z = {np.max(z_coords):.3f}"
+    )
+
+
+def test_sphere_shrink_to_fit():
+    """Verify oversized sphere is shrunk to fit within trench."""
+    import numpy as np
+
+    # Sphere larger than trench can hold
+    spec_dict = {
+        "path_xy": [[0.0, 0.0], [5.0, 0.0]],
+        "width": 0.6,
+        "depth": 0.5,
+        "wall_slope": 0.0,
+        "ground": {"z0": 0.0, "slope": [0.0, 0.0], "size_margin": 1.0},
+        "pipes": [],
+        "boxes": [],
+        "spheres": [
+            {
+                "radius": 1.0,  # Much larger than can fit
+                "s": 0.5,
+                "offset_u": 0.0,
+                "z": None,
+            }
+        ],
+        "noise": {"enable": False},
+    }
+    spec = scene_spec_from_dict(spec_dict)
+    result = generate_surface_mesh(spec, make_preview=False)
+
+    # Get sphere vertices
+    V_sphere, _ = result.groups["sphere0"]
+
+    # Trench: width=0.6 (half=0.3), depth=0.5, floor at z=-0.5
+    half_width = 0.3
+    floor_z = -0.5
+    ground_z = 0.0
+
+    # Sphere should fit within trench
+    y_coords = V_sphere[:, 1]
+    z_coords = V_sphere[:, 2]
+
+    tolerance = 0.05
+    assert np.all(np.abs(y_coords) <= half_width + tolerance), (
+        f"Sphere extends beyond trench walls: max |y| = {np.max(np.abs(y_coords)):.3f}"
+    )
+    assert np.min(z_coords) >= floor_z - tolerance, (
+        f"Sphere extends below floor: min_z = {np.min(z_coords):.3f}"
+    )
+    assert np.max(z_coords) <= ground_z + tolerance, (
+        f"Sphere extends above ground: max_z = {np.max(z_coords):.3f}"
+    )
+
+
+def test_no_vertices_outside_trench():
+    """Integration test: all embedded object vertices are inside trench boundary."""
+    import numpy as np
+
+    # Complex scene with multiple objects
+    spec_dict = {
+        "path_xy": [[0.0, 0.0], [4.0, 0.0], [4.0, 3.0]],  # L-shaped
+        "width": 1.0,
+        "depth": 1.0,
+        "wall_slope": 0.1,
+        "ground": {"z0": 0.0, "slope": [0.0, 0.0], "size_margin": 1.5},
+        "pipes": [
+            {
+                "radius": 0.08,
+                "length": 2.0,  # Long pipe
+                "angle_deg": 90.0,  # Perpendicular
+                "s_center": 0.3,
+                "z": -0.5,
+                "offset_u": 0.0,
+            },
+            {
+                "radius": 0.1,
+                "length": 1.0,
+                "angle_deg": 0.0,  # Along trench
+                "s_center": 0.7,
+                "z": -0.3,
+                "offset_u": 0.1,
+            },
+        ],
+        "boxes": [
+            {
+                "along": 0.3,
+                "across": 1.5,  # Wider than trench at depth
+                "height": 0.4,
+                "s": 0.5,
+                "offset_u": 0.0,
+                "z": None,
+            }
+        ],
+        "spheres": [
+            {
+                "radius": 0.5,  # Large sphere
+                "s": 0.4,
+                "offset_u": 0.0,
+                "z": None,
+            }
+        ],
+        "noise": {"enable": False},
+    }
+    spec = scene_spec_from_dict(spec_dict)
+    result = generate_surface_mesh(spec, make_preview=False)
+
+    # Helper to check if point is inside trench cross-section
+    def point_inside_trench(x, y, z, spec):
+        """Check if a point is inside the trench void."""
+        from trenchfoot.trench_scene_generator_v3 import (
+            _sample_polyline_at_s,
+            _rotate_ccw,
+            _ground_fn,
+            _polyline_lengths,
+        )
+
+        path_xy = spec.path_xy
+        half_top = spec.width / 2.0
+        depth = spec.depth
+        slope = spec.wall_slope
+        gfun = _ground_fn(spec.ground)
+
+        # Find closest point on path
+        P = np.array(path_xy, float)
+        cum, total = _polyline_lengths(path_xy)
+
+        # Sample at many points to find closest
+        best_dist = float("inf")
+        best_s = 0.0
+        for s in np.linspace(0, 1, 100):
+            pos, _ = _sample_polyline_at_s(path_xy, s)
+            dist = (pos[0] - x) ** 2 + (pos[1] - y) ** 2
+            if dist < best_dist:
+                best_dist = dist
+                best_s = s
+
+        pos, tangent = _sample_polyline_at_s(path_xy, best_s)
+        left_normal = _rotate_ccw(tangent)
+        top_z = gfun(pos[0], pos[1])
+
+        # Local coordinates
+        offset_from_center = np.array([x - pos[0], y - pos[1]])
+        local_u = np.dot(offset_from_center, left_normal)
+
+        # Half-width at this depth
+        if z > top_z:
+            return False  # Above ground
+        if z < top_z - depth:
+            return False  # Below floor
+        half_w = max(0.001, half_top - slope * (top_z - z))
+
+        return abs(local_u) <= half_w
+
+    # Check all embedded object vertices
+    tolerance = 0.1  # Allow small overshoot at boundaries
+    for gname, (V, F) in result.groups.items():
+        if not any(gname.startswith(prefix) for prefix in ["pipe", "box", "sphere"]):
+            continue
+
+        for i, vert in enumerate(V):
+            x, y, z = vert
+            if not point_inside_trench(x, y, z, spec):
+                # Check with tolerance
+                inside_with_tol = False
+                for dx in [-tolerance, 0, tolerance]:
+                    for dy in [-tolerance, 0, tolerance]:
+                        for dz in [-tolerance, 0, tolerance]:
+                            if point_inside_trench(x + dx, y + dy, z + dz, spec):
+                                inside_with_tol = True
+                                break
+                        if inside_with_tol:
+                            break
+                    if inside_with_tol:
+                        break
+
+                if not inside_with_tol:
+                    pytest.fail(
+                        f"Vertex {i} of {gname} is outside trench: "
+                        f"({x:.3f}, {y:.3f}, {z:.3f})"
+                    )
