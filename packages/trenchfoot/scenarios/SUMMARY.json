@@ -11,12 +11,8 @@
       "spec_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S01_straight_vwalls/scene.json",
       "surface_obj": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S01_straight_vwalls/trench_scene.obj",
       "metrics_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S01_straight_vwalls/metrics.json",
-      "preview_paths": [
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S01_straight_vwalls/preview_top.png",
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S01_straight_vwalls/preview_side.png",
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S01_straight_vwalls/preview_oblique.png"
-      ],
-      "preview_count": 3,
+      "preview_paths": [],
+      "preview_count": 0,
       "object_counts": {
         "pipes": 0,
         "boxes": 0,
@@ -24,7 +20,7 @@
       },
       "footprint_top": 5.0,
       "footprint_bottom": 5.0,
-      "trench_from_surface": -1.0,
+      "trench_from_surface": -3.0,
       "volumetric_path": null,
       "volumetric_lc": null,
       "volumetric_error": null,
@@ -36,12 +32,8 @@
       "spec_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S02_straight_slope_pipe/scene.json",
       "surface_obj": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S02_straight_slope_pipe/trench_scene.obj",
       "metrics_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S02_straight_slope_pipe/metrics.json",
-      "preview_paths": [
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S02_straight_slope_pipe/preview_top.png",
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S02_straight_slope_pipe/preview_side.png",
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S02_straight_slope_pipe/preview_oblique.png"
-      ],
-      "preview_count": 3,
+      "preview_paths": [],
+      "preview_count": 0,
       "object_counts": {
         "pipes": 1,
         "boxes": 0,
@@ -49,7 +41,7 @@
       },
       "footprint_top": 7.199999999999999,
       "footprint_bottom": 5.039999999999999,
-      "trench_from_surface": -2.484000000000001,
+      "trench_from_surface": -5.508,
       "volumetric_path": null,
       "volumetric_lc": null,
       "volumetric_error": null,
@@ -61,12 +53,8 @@
       "spec_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S03_L_slope_two_pipes_box/scene.json",
       "surface_obj": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S03_L_slope_two_pipes_box/trench_scene.obj",
       "metrics_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S03_L_slope_two_pipes_box/metrics.json",
-      "preview_paths": [
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S03_L_slope_two_pipes_box/preview_top.png",
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S03_L_slope_two_pipes_box/preview_side.png",
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S03_L_slope_two_pipes_box/preview_oblique.png"
-      ],
-      "preview_count": 3,
+      "preview_paths": [],
+      "preview_count": 0,
       "object_counts": {
         "pipes": 2,
         "boxes": 1,
@@ -74,7 +62,7 @@
       },
       "footprint_top": 11.999999999999995,
       "footprint_bottom": 8.700070386125077,
-      "trench_from_surface": -5.0179228990454625,
+      "trench_from_surface": -11.39792289904546,
       "volumetric_path": null,
       "volumetric_lc": null,
       "volumetric_error": null,
@@ -86,20 +74,16 @@
       "spec_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S04_U_slope_multi_noise/scene.json",
       "surface_obj": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S04_U_slope_multi_noise/trench_scene.obj",
       "metrics_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S04_U_slope_multi_noise/metrics.json",
-      "preview_paths": [
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S04_U_slope_multi_noise/preview_top.png",
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S04_U_slope_multi_noise/preview_side.png",
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S04_U_slope_multi_noise/preview_oblique.png"
-      ],
-      "preview_count": 3,
+      "preview_paths": [],
+      "preview_count": 0,
       "object_counts": {
         "pipes": 3,
         "boxes": 0,
         "spheres": 1
       },
       "footprint_top": 22.400000000000006,
-      "footprint_bottom": 12.80127074424757,
-      "trench_from_surface": -11.011702905355754,
+      "footprint_bottom": 12.801270744247573,
+      "trench_from_surface": -21.25170290535576,
       "volumetric_path": null,
       "volumetric_lc": null,
       "volumetric_error": null,
@@ -111,12 +95,8 @@
       "spec_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S05_wide_slope_pair/scene.json",
       "surface_obj": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S05_wide_slope_pair/trench_scene.obj",
       "metrics_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S05_wide_slope_pair/metrics.json",
-      "preview_paths": [
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S05_wide_slope_pair/preview_top.png",
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S05_wide_slope_pair/preview_side.png",
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S05_wide_slope_pair/preview_oblique.png"
-      ],
-      "preview_count": 3,
+      "preview_paths": [],
+      "preview_count": 0,
       "object_counts": {
         "pipes": 2,
         "boxes": 1,
@@ -124,7 +104,7 @@
       },
       "footprint_top": 28.808998594189276,
       "footprint_bottom": 27.46494373197848,
-      "trench_from_surface": -6.858764294895576,
+      "trench_from_surface": -19.67156429489558,
       "volumetric_path": null,
       "volumetric_lc": null,
       "volumetric_error": null,
@@ -136,20 +116,16 @@
       "spec_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S06_bumpy_wide_loop/scene.json",
       "surface_obj": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S06_bumpy_wide_loop/trench_scene.obj",
       "metrics_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S06_bumpy_wide_loop/metrics.json",
-      "preview_paths": [
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S06_bumpy_wide_loop/preview_top.png",
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S06_bumpy_wide_loop/preview_side.png",
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S06_bumpy_wide_loop/preview_oblique.png"
-      ],
-      "preview_count": 3,
+      "preview_paths": [],
+      "preview_count": 0,
       "object_counts": {
         "pipes": 2,
         "boxes": 0,
         "spheres": 1
       },
-      "footprint_top": 61.10535782948724,
-      "footprint_bottom": 56.3121473979779,
-      "trench_from_surface": -17.122161702529255,
+      "footprint_top": 66.92240390116315,
+      "footprint_bottom": 61.67228672101475,
+      "trench_from_surface": -64.57410868962761,
       "volumetric_path": null,
       "volumetric_lc": null,
       "volumetric_error": null,
@@ -161,20 +137,16 @@
       "spec_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S07_circular_well/scene.json",
       "surface_obj": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S07_circular_well/trench_scene.obj",
       "metrics_path": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S07_circular_well/metrics.json",
-      "preview_paths": [
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S07_circular_well/preview_top.png",
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S07_circular_well/preview_side.png",
-        "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios/S07_circular_well/preview_oblique.png"
-      ],
-      "preview_count": 3,
+      "preview_paths": [],
+      "preview_count": 0,
       "object_counts": {
         "pipes": 4,
         "boxes": 0,
         "spheres": 1
       },
-      "footprint_top": 22.056405162254812,
-      "footprint_bottom": 18.826708706545926,
-      "trench_from_surface": -19.832030917053125,
+      "footprint_top": 18.819290943275632,
+      "footprint_bottom": 16.473997911050567,
+      "trench_from_surface": -46.96345389726256,
       "volumetric_path": null,
       "volumetric_lc": null,
       "volumetric_error": null,

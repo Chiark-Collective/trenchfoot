@@ -16,8 +16,8 @@
     ]
   },
   "volumes": {
-    "trench_from_surface": -2.484000000000001,
-    "trench_flux_integral_div1": -2.484000000000001
+    "trench_from_surface": -5.508,
+    "trench_flux_integral_div1": -5.508000000000001
   },
   "footprint_area_top": 7.199999999999999,
   "footprint_area_bottom": 5.039999999999999,

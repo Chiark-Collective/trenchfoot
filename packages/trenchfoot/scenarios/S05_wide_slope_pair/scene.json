@@ -30,7 +30,7 @@
       "radius": 0.2,
       "length": 5.5,
       "angle_deg": 10,
-      "s_center": 0.35,
+      "s_center": 0.2,
       "z": -0.4,
       "offset_u": 0.3,
       "clearance_scale": 0.9
@@ -50,8 +50,8 @@
       "along": 1.2,
       "across": 0.9,
       "height": 0.35,
-      "s": 0.55,
-      "offset_u": -0.25,
+      "s": 0.45,
+      "offset_u": -0.4,
       "z": -0.35
     }
   ],

@@ -1,21 +1,22 @@
 {
   "surface_area_by_group": {
-    "trench_bottom": 18.826708706545926,
-    "trench_cap_for_volume": 22.056405162254812,
-    "trench_walls": 54.53929135016208,
-    "ground_surface": 50.10766187090814,
-    "pipe0_pipe_side": 5.025651121424817,
-    "pipe0_pipe_cap_neg": 0.12557400812187475,
-    "pipe0_pipe_cap_pos": 0.12557400812187475,
-    "pipe1_pipe_side": 3.2980835484350353,
-    "pipe1_pipe_cap_neg": 0.07063537956855452,
-    "pipe1_pipe_cap_pos": 0.07063537956855451,
-    "pipe2_pipe_side": 1.884619170534306,
-    "pipe2_pipe_cap_neg": 0.03139350203046869,
-    "pipe2_pipe_cap_pos": 0.03139350203046869,
-    "pipe3_pipe_side": 2.4123125382839117,
-    "pipe3_pipe_cap_neg": 0.04520664292387489,
-    "pipe3_pipe_cap_pos": 0.045206642923874885,
+    "trench_bottom": 16.473997911050567,
+    "trench_cap_for_volume": 18.819290943275632,
+    "trench_walls": 47.125552855988765,
+    "inner_column_lid": 0.7653310283720559,
+    "ground_surface": 44.03309020270969,
+    "pipe0_pipe_side": 2.7766722445872127,
+    "pipe0_pipe_cap_neg": 0.22418287207477486,
+    "pipe0_pipe_cap_pos": 0.2234243503959072,
+    "pipe1_pipe_side": 2.2008818250895956,
+    "pipe1_pipe_cap_neg": 0.12665718855345193,
+    "pipe1_pipe_cap_pos": 0.12598629647221604,
+    "pipe2_pipe_side": 1.5575592186478329,
+    "pipe2_pipe_cap_neg": 0.056181073896585436,
+    "pipe2_pipe_cap_pos": 0.0565618739885123,
+    "pipe3_pipe_side": 1.7390323396105312,
+    "pipe3_pipe_cap_neg": 0.08121273952997668,
+    "pipe3_pipe_cap_pos": 0.08105980291105107,
     "sphere0": 0.7838221025021312
   },
   "closed_surface_sets": {
@@ -26,11 +27,11 @@
     ]
   },
   "volumes": {
-    "trench_from_surface": -19.832030917053125,
-    "trench_flux_integral_div1": -19.832030917053117
+    "trench_from_surface": -46.96345389726256,
+    "trench_flux_integral_div1": -46.96345389726256
   },
-  "footprint_area_top": 22.056405162254812,
-  "footprint_area_bottom": 18.826708706545926,
+  "footprint_area_top": 18.819290943275632,
+  "footprint_area_bottom": 16.473997911050567,
   "width_top": 2.0,
   "width_bottom": 1.75,
   "noise": {

@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.3] - 2026-01-30
+
+### Fixed
+- Regenerated bundled scenario meshes with truncation fix (0.4.2 shipped stale OBJ files)
+
 ## [0.4.2] - 2026-01-29
 
 ### Added
