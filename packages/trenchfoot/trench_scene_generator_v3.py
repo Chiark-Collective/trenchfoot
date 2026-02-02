@@ -1216,18 +1216,30 @@ def make_ground_surface_plane(path_xy: List[Tuple[float,float]], width_top: floa
         return result
     else:
         # Open paths: ground forms annulus with extensions past trench endpoints.
-        # The outer ring (ground boundary) is extended, but the inner ring (trench
-        # opening) stays at its original position. This creates ground fill at the
-        # trench ends rather than extending the trench opening itself.
+        # The inner ring (trench opening) uses offset polyline with miter junctions.
+        # The outer ring (ground boundary) is a simple bounding rectangle to ensure
+        # full ground coverage - using offset polyline here would create miter junctions
+        # that "cut in" at corners, leaving gaps in the ground surface.
 
         # Inner boundary: trench opening at original position (not extended)
         L_inner, R_inner = _offset_polyline(path_xy, half_top)
         inner_ring = _ensure_ccw(_ring_from_LR(L_inner, R_inner))
 
-        # Outer boundary: offset by margin, extended at ends
-        L_outer, R_outer = _offset_polyline(path_xy, half_top + m)
-        L_outer_ext, R_outer_ext = _extend_polyline_ends(L_outer, R_outer, path_xy, m)
-        outer_ring = _ensure_ccw(_ring_from_LR(L_outer_ext, R_outer_ext))
+        # Outer boundary: bounding rectangle around trench opening, expanded by margin.
+        # This ensures the ground surface is rectangular and fully covers the area
+        # around the trench, avoiding miter junction artifacts at corners.
+        inner_ring_arr = np.array(inner_ring)
+        x_min = inner_ring_arr[:, 0].min() - m
+        x_max = inner_ring_arr[:, 0].max() + m
+        y_min = inner_ring_arr[:, 1].min() - m
+        y_max = inner_ring_arr[:, 1].max() + m
+        outer_ring = np.array([
+            [x_min, y_min],
+            [x_max, y_min],
+            [x_max, y_max],
+            [x_min, y_max],
+        ], dtype=float)
+        outer_ring = _ensure_ccw(outer_ring)
 
         # Triangulate the annular region (leaves hole open)
         combined_xy, tris = _triangulate_annulus(outer_ring, inner_ring)
