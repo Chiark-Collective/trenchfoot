@@ -124,8 +124,8 @@
         "spheres": 1
       },
       "footprint_top": 66.92240390116315,
-      "footprint_bottom": 61.67228672101475,
-      "trench_from_surface": -64.57410868962761,
+      "footprint_bottom": 61.67408796224451,
+      "trench_from_surface": -64.58714145117246,
       "volumetric_path": null,
       "volumetric_lc": null,
       "volumetric_error": null,
@@ -144,9 +144,9 @@
         "boxes": 0,
         "spheres": 1
       },
-      "footprint_top": 18.819290943275632,
-      "footprint_bottom": 16.473997911050567,
-      "trench_from_surface": -46.96345389726256,
+      "footprint_top": 18.819290943275636,
+      "footprint_bottom": 16.489935524033296,
+      "trench_from_surface": -46.97200091743949,
       "volumetric_path": null,
       "volumetric_lc": null,
       "volumetric_error": null,

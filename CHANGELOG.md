@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.6] - 2026-02-03
+
+### Fixed
+- **Ground plane triangulation for L/U-shaped trenches**: The ground surface around non-convex trench openings (L-shapes, U-shapes) was incorrectly triangulated, creating diagonal edges that crossed over the trench void. Replaced the simple "marching" triangulation algorithm with the earcut algorithm (via `mapbox-earcut`) which correctly handles polygons with non-convex holes.
+
+### Changed
+- Added `mapbox-earcut>=1.0` as a new dependency for robust polygon triangulation
+
 ## [0.4.5] - 2026-02-03
 
 ### Fixed

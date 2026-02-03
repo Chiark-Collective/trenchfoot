@@ -1101,71 +1101,42 @@ def _triangulate_annulus(outer: np.ndarray, inner: np.ndarray) -> Tuple[np.ndarr
     Creates triangles that fill ONLY the region between the two polygons,
     leaving the inner polygon area as an open hole.
 
+    Uses the earcut algorithm which correctly handles non-convex inner
+    polygons (L-shapes, U-shapes, etc.) without creating triangles that
+    cross over the hole.
+
     Both polygons should be CCW oriented. Returns (vertices, faces) where
     vertices is the concatenation of outer and inner, and faces index into it.
     """
+    import mapbox_earcut as earcut
+
     n_outer = len(outer)
     n_inner = len(inner)
+
+    # Earcut expects:
+    # - A flat array of coordinates [x0, y0, x1, y1, ...]
+    # - A list of hole start indices (index into the coordinate array by vertex count)
+    #
+    # The outer polygon comes first, then the inner polygon (as a hole).
+    # ring_end_indices specifies where each ring ends (cumulative indices).
+
+    # Combine outer and inner polygons: outer first, then inner (as hole)
+    coords = np.vstack([outer, inner]).astype(np.float64)
+
+    # ring_end_indices: cumulative end indices for each ring
+    # First ring (outer) ends at n_outer, second ring (hole) ends at n_outer + n_inner
+    ring_end_indices = np.array([n_outer, n_outer + n_inner], dtype=np.uint32)
+
+    # Run earcut triangulation
+    triangle_indices = earcut.triangulate_float64(coords, ring_end_indices)
+
+    # Convert flat triangle indices to (N, 3) array
+    tris = np.array(triangle_indices, dtype=int).reshape(-1, 3)
 
     # Vertices: outer first, then inner
     verts = np.vstack([outer, inner])
 
-    # Create triangles by "zipping" around the two polygons
-    # This works well when both polygons have similar vertex counts
-    # For different counts, we need to handle the ratio
-
-    tris = []
-
-    # Use a marching approach: for each outer edge, connect to nearest inner vertices
-    # and vice versa. This creates a proper triangulated annulus.
-
-    # Simple approach: interpolate around both polygons simultaneously
-    # treating them as having a common parameter t in [0, 1]
-
-    i_outer = 0  # current outer vertex index
-    i_inner = 0  # current inner vertex index
-    t_outer = 0.0  # parameter position on outer polygon
-    t_inner = 0.0  # parameter position on inner polygon
-
-    outer_step = 1.0 / n_outer
-    inner_step = 1.0 / n_inner
-
-    # March around creating triangles
-    while i_outer < n_outer or i_inner < n_inner:
-        # Current vertices
-        o_curr = i_outer % n_outer
-        o_next = (i_outer + 1) % n_outer
-        i_curr = i_inner % n_inner
-        i_next = (i_inner + 1) % n_inner
-
-        # Indices in combined vertex array
-        vo_curr = o_curr
-        vo_next = o_next
-        vi_curr = n_outer + i_curr
-        vi_next = n_outer + i_next
-
-        if i_outer >= n_outer:
-            # Finished outer, just advance inner
-            tris.append([vo_curr, vi_next, vi_curr])
-            i_inner += 1
-            t_inner += inner_step
-        elif i_inner >= n_inner:
-            # Finished inner, just advance outer
-            tris.append([vo_curr, vo_next, vi_curr])
-            i_outer += 1
-            t_outer += outer_step
-        elif t_outer + outer_step <= t_inner + inner_step:
-            # Advance outer - create triangle: o_curr, o_next, i_curr
-            tris.append([vo_curr, vo_next, vi_curr])
-            i_outer += 1
-            t_outer += outer_step
-        else:
-            # Advance inner - create triangle: o_curr, i_next, i_curr
-            tris.append([vo_curr, vi_next, vi_curr])
-            i_inner += 1
-            t_inner += inner_step
-
-    return verts, np.array(tris, dtype=int)
+    return verts, tris
 
 
 def make_ground_surface_plane(path_xy: List[Tuple[float,float]], width_top: float, ground) -> Dict[str,Tuple[np.ndarray,np.ndarray]]:
