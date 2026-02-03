@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "trenchfoot"
-version = "0.4.6"
+version = "0.4.7"
 description = "Synthetic trench scenario generator bundle (surfaces + volumetrics)."
 readme = "README.md"
 requires-python = ">=3.12"

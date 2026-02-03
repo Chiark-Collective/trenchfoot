@@ -1,6 +1,6 @@
 {
   "out_root": "/home/liam/projects/chiark/trenchfoot/packages/trenchfoot/scenarios",
-  "preview_enabled": false,
+  "preview_enabled": true,
   "volumetric_requested": false,
   "volumetric_available": false,
   "mesh_characteristic_length": 0.3,

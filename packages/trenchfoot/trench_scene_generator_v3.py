@@ -1311,56 +1311,50 @@ def _point_inside_trench(
     return abs(local_u) <= half_w
 
 
-def _is_beyond_trench_ends(
+def _point_in_polygon_2d(x: float, y: float, polygon: np.ndarray) -> bool:
+    """Ray-casting algorithm to check if a 2D point is inside a polygon.
+
+    Uses the ray-casting algorithm: count how many times a horizontal ray
+    from the point intersects the polygon edges. Odd = inside, even = outside.
+    """
+    n = len(polygon)
+    inside = False
+    j = n - 1
+    for i in range(n):
+        xi, yi = polygon[i]
+        xj, yj = polygon[j]
+        if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi + 1e-12) + xi):
+            inside = not inside
+        j = i
+    return inside
+
+
+def _is_outside_trench_footprint(
     x: float, y: float,
     path_xy: List[Tuple[float, float]],
+    half_top: float,
 ) -> bool:
-    """Check if a point is beyond the ends of an open trench path.
+    """Check if a 2D point is outside the trench footprint polygon.
 
-    For open paths (not closed loops), points that project beyond the first
-    or last vertex of the path are outside the trench void, even if their
-    perpendicular distance would put them within the trench walls.
+    The trench footprint is the 2D shape formed by offsetting the path
+    by half_top on each side. For open paths this creates a closed polygon
+    around the trench. For closed paths, it creates an annular region.
 
-    Returns True if the point is beyond either end of an open path.
-    Returns False for closed paths (where there are no "ends").
+    Returns True if the point is outside the trench footprint.
     """
     if _is_path_closed(path_xy):
-        return False  # Closed paths have no ends to be beyond
-
-    P = np.array(path_xy, float)
-    query = np.array([x, y], float)
-
-    # Check start of path (s=0)
-    start = P[0]
-    if len(P) > 1:
-        # Tangent at start points in the direction of the path
-        tangent_start = P[1] - P[0]
-        tangent_start = tangent_start / (np.linalg.norm(tangent_start) + 1e-12)
-        # Vector from start to query point
-        to_query = query - start
-        # Distance along tangent (negative means before the start)
-        along_start = float(np.dot(to_query, tangent_start))
-        # The trench has a vertical end wall at the start vertex.
-        # Any point projecting before this wall is outside the trench.
-        if along_start < 0:
-            return True
-
-    # Check end of path (s=1)
-    end = P[-1]
-    if len(P) > 1:
-        # Tangent at end points in the direction we came from
-        tangent_end = P[-1] - P[-2]
-        tangent_end = tangent_end / (np.linalg.norm(tangent_end) + 1e-12)
-        # Vector from end to query point
-        to_query = query - end
-        # Distance along tangent (positive means past the end)
-        along_end = float(np.dot(to_query, tangent_end))
-        # The trench has a vertical end wall at the end vertex.
-        # Any point projecting past this wall is outside the trench.
-        if along_end > 0:
-            return True
-
-    return False
+        # For closed paths, check if point is between inner and outer rings
+        outer = np.array(_offset_closed_polyline(path_xy, half_top), float)
+        inner = np.array(_offset_closed_polyline(path_xy, -half_top), float)
+        # Point must be inside outer AND outside inner to be in the trench
+        in_outer = _point_in_polygon_2d(x, y, outer)
+        in_inner = _point_in_polygon_2d(x, y, inner)
+        return not (in_outer and not in_inner)
+    else:
+        # For open paths, create a closed polygon from left/right offsets
+        L, R = _offset_polyline(path_xy, half_top)
+        footprint = _ring_from_LR(L, R)
+        return not _point_in_polygon_2d(x, y, footprint)
 
 
 @dataclass
@@ -1428,9 +1422,9 @@ def _compute_pipe_truncation(
         if abs(local_u) + effective_radius > half_w:
             return False
 
-        # Check trench end boundaries: for open trenches, pipe must not extend
-        # beyond the vertical end walls at the start/end of the path
-        if _is_beyond_trench_ends(x, y, path_xy):
+        # Check trench footprint: pipe axis must be inside the 2D trench polygon.
+        # This handles both path ends AND internal corners of L/U-shaped trenches.
+        if _is_outside_trench_footprint(x, y, path_xy, half_top):
             return False
 
         return True
@@ -1681,6 +1675,13 @@ def _clip_vertices_to_trench(
     """
     V_clipped = V.copy()
 
+    # Pre-compute trench footprint for XY clipping
+    if _is_path_closed(path_xy):
+        outer = np.array(_offset_closed_polyline(path_xy, half_top), float)
+    else:
+        L, R = _offset_polyline(path_xy, half_top)
+        footprint = _ring_from_LR(L, R)
+
     for i, vert in enumerate(V):
         x, y, z = vert
         frame, local_u = _find_trench_frame_at_xy(
@@ -1704,6 +1705,12 @@ def _clip_vertices_to_trench(
         else:
             x_clipped = x
             y_clipped = y
+
+        # Also check XY footprint (handles L/U-shaped corners)
+        if _is_outside_trench_footprint(x_clipped, y_clipped, path_xy, half_top):
+            # Project to nearest point on centerline
+            x_clipped = frame.centerline_xy[0]
+            y_clipped = frame.centerline_xy[1]
 
         V_clipped[i] = [x_clipped, y_clipped, z_clipped]
 
@@ -1846,11 +1853,13 @@ def _build_surface_groups(
             cap_plane_pos=trunc.pos_cap_plane,
         )
         for key, (V, F) in cyl.items():
-            # Clip cap vertices to trench boundary to handle projection overshoot
-            if "cap" in key:
-                V = _clip_vertices_to_trench(
-                    V, spec.path_xy, half_top, spec.wall_slope, spec.ground, spec.depth
-                )
+            # Clip all pipe vertices to trench boundary.
+            # This handles both cap projection overshoot AND side vertices that
+            # extend beyond the trench footprint due to radial component when
+            # the pipe axis is at an angle.
+            V = _clip_vertices_to_trench(
+                V, spec.path_xy, half_top, spec.wall_slope, spec.ground, spec.depth
+            )
             groups[f"pipe{idx}_{key}"] = (V, F)
 
     for j, b in enumerate(spec.boxes):

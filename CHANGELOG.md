@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.7] - 2026-02-03
+
+### Fixed
+- **Angled pipe surface clipping**: When pipes were at an angle to the trench axis (e.g., 10° in S05), the cylinder surface vertices extended beyond the trench boundary due to the radial component perpendicular to the pipe axis. Now all pipe vertices (not just caps) are clipped to the trench footprint, ensuring no geometry protrudes outside the trench void.
+- Regenerated bundled scenario meshes with the pipe surface clipping fix
+
 ## [0.4.6] - 2026-02-03
 
 ### Fixed
