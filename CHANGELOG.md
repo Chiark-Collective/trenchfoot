@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.4] - 2026-02-03
+
+### Fixed
+- **Pipe truncation at trench end walls**: For open (non-closed) trench paths, pipes were not being truncated at the vertical end walls, causing them to protrude beyond the trench boundaries. This created ill-conditioned SDF geometry downstream. Added `_is_beyond_trench_ends()` helper that detects when a point projects beyond the start or end vertices of an open path. Closed paths (like circular wells) are unaffected since they have no "ends" to truncate at.
+- Regenerated bundled scenario meshes (S02-S05) with the end wall truncation fix
+
 ## [0.4.3] - 2026-01-30
 
 ### Fixed
