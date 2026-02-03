@@ -1340,6 +1340,58 @@ def _point_inside_trench(
     return abs(local_u) <= half_w
 
 
+def _is_beyond_trench_ends(
+    x: float, y: float,
+    path_xy: List[Tuple[float, float]],
+) -> bool:
+    """Check if a point is beyond the ends of an open trench path.
+
+    For open paths (not closed loops), points that project beyond the first
+    or last vertex of the path are outside the trench void, even if their
+    perpendicular distance would put them within the trench walls.
+
+    Returns True if the point is beyond either end of an open path.
+    Returns False for closed paths (where there are no "ends").
+    """
+    if _is_path_closed(path_xy):
+        return False  # Closed paths have no ends to be beyond
+
+    P = np.array(path_xy, float)
+    query = np.array([x, y], float)
+
+    # Check start of path (s=0)
+    start = P[0]
+    if len(P) > 1:
+        # Tangent at start points in the direction of the path
+        tangent_start = P[1] - P[0]
+        tangent_start = tangent_start / (np.linalg.norm(tangent_start) + 1e-12)
+        # Vector from start to query point
+        to_query = query - start
+        # Distance along tangent (negative means before the start)
+        along_start = float(np.dot(to_query, tangent_start))
+        # The trench has a vertical end wall at the start vertex.
+        # Any point projecting before this wall is outside the trench.
+        if along_start < 0:
+            return True
+
+    # Check end of path (s=1)
+    end = P[-1]
+    if len(P) > 1:
+        # Tangent at end points in the direction we came from
+        tangent_end = P[-1] - P[-2]
+        tangent_end = tangent_end / (np.linalg.norm(tangent_end) + 1e-12)
+        # Vector from end to query point
+        to_query = query - end
+        # Distance along tangent (positive means past the end)
+        along_end = float(np.dot(to_query, tangent_end))
+        # The trench has a vertical end wall at the end vertex.
+        # Any point projecting past this wall is outside the trench.
+        if along_end > 0:
+            return True
+
+    return False
+
+
 @dataclass
 class TruncationResult:
     """Result of computing pipe truncation."""
@@ -1403,6 +1455,11 @@ def _compute_pipe_truncation(
         # Check wall clearance: pipe surface must not penetrate walls
         half_w = _half_width_at_depth(half_top, wall_slope, frame.top_z, z)
         if abs(local_u) + effective_radius > half_w:
+            return False
+
+        # Check trench end boundaries: for open trenches, pipe must not extend
+        # beyond the vertical end walls at the start/end of the path
+        if _is_beyond_trench_ends(x, y, path_xy):
             return False
 
         return True
